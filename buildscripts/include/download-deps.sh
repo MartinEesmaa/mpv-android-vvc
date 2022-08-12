@@ -7,6 +7,23 @@
 
 mkdir -p deps && cd deps
 
+# libxml2
+if [ ! -d libxml2 ]; then
+	mkdir libxml2
+	$WGET ftp://xmlsoft.org/libxml2/libxml2-2.9.12.tar.gz -O - | \
+		tar -xz -C libxml2 --strip-components=1
+fi
+
+# vvdec
+if [ ! -d vvdec ]; then
+	git clone https://github.com/fraunhoferhhi/vvdec vvdec
+fi
+
+# fdk-aac
+if [ ! -d fdk-aac ]; then
+	git clone https://github.com/mstorsjo/fdk-aac fdk-aac
+fi
+
 # mbedtls
 if [ ! -d mbedtls ]; then
 	mkdir mbedtls
@@ -15,11 +32,12 @@ if [ ! -d mbedtls ]; then
 fi
 
 # dav1d
-[ ! -d dav1d ] && git clone https://code.videolan.org/videolan/dav1d.git
+[ ! -d dav1d ] && git clone https://code.videolan.org/videolan/dav1d.git --branch 0.8.2
 
 # ffmpeg
 if [ ! -d ffmpeg ]; then
-	git clone https://github.com/FFmpeg/FFmpeg ffmpeg
+	# git clone https://github.com/FFmpeg/FFmpeg ffmpeg
+	git clone https://github.com/tbiat/FFmpeg ffmpeg
 	[ $TRAVIS -eq 1 ] && ( cd ffmpeg; git checkout $v_travis_ffmpeg )
 fi
 
