@@ -21,10 +21,10 @@ v_libxml2=2.9.12
 
 dep_libxml2=()
 dep_vvdec=()
-dep_fdk-aac=()
+dep_fdkaac=()
 dep_mbedtls=()
 dep_dav1d=()
-dep_ffmpeg=(mbedtls dav1d libxml2 vvdec fdk-aac)
+dep_ffmpeg=(mbedtls dav1d libxml2 vvdec fdkaac)
 dep_freetype2=()
 dep_fribidi=()
 dep_harfbuzz=()
