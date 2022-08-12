@@ -11,6 +11,11 @@ PREFIX = $(PREFIX_X86)
 endif
 
 include $(CLEAR_VARS)
+LOCAL_MODULE := libxml2
+LOCAL_SRC_FILES := $(PREFIX)/lib/$(LOCAL_MODULE).so
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := libswresample
 LOCAL_SRC_FILES := $(PREFIX)/lib/$(LOCAL_MODULE).so
 include $(PREBUILT_SHARED_LIBRARY)
