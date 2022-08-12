@@ -26,7 +26,7 @@ cpuflags=
 	--target-os=android --enable-cross-compile --cross-prefix=$ndk_triple- --cc=$CC \
 	--arch=${ndk_triple%%-*} --cpu=$cpu --pkg-config=pkg-config \
 	--extra-cflags="-I$prefix_dir/include $cpuflags" --extra-ldflags="-L$prefix_dir/lib" \
-	--enable-{jni,mediacodec,mbedtls,libdav1d,libvvdec,libfdk-aac} --disable-vulkan \
+	--enable-{jni,mediacodec,mbedtls,libdav1d,libvvdec,libfdk-aac,libxml2} --disable-vulkan \
 	--disable-static --enable-shared \
 	--disable-{stripping,doc,programs} \
 	--disable-{muxers,encoders,devices} --enable-encoder=mjpeg,png
