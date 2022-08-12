@@ -19,9 +19,9 @@ if [ ! -d vvdec ]; then
 	git clone https://github.com/fraunhoferhhi/vvdec vvdec
 fi
 
-# fdk-aac
-if [ ! -d fdk-aac ]; then
-	git clone https://github.com/mstorsjo/fdk-aac fdk-aac
+# fdkaac
+if [ ! -d fdkaac ]; then
+	git clone https://github.com/mstorsjo/fdk-aac fdkaac
 fi
 
 # mbedtls
