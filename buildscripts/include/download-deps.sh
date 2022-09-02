@@ -37,7 +37,7 @@ if [ ! -d mbedtls ]; then
 fi
 
 # dav1d
-[ ! -d dav1d ] && git clone https://code.videolan.org/videolan/dav1d.git --branch 0.8.2
+[ ! -d dav1d ] && git clone https://code.videolan.org/videolan/dav1d.git --branch 1.0.0
 
 # ffmpeg
 if [ ! -d ffmpeg ]; then
