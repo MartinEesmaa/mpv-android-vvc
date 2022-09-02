@@ -24,6 +24,11 @@ if [ ! -d fdkaac ]; then
 	git clone https://github.com/mstorsjo/fdk-aac fdkaac
 fi
 
+# libopus
+if [ ! -d opus ]; then
+	git clone https://github.com/xiph/opus opus
+fi
+
 # mbedtls
 if [ ! -d mbedtls ]; then
 	mkdir mbedtls
