@@ -21,6 +21,6 @@ extra=
 
 ../configure \
 	--host=$ndk_triple $extra \
-	--enable-shared --disable-static
+	--enable-shared --disable-static --disable-doc --disable-extra-programs
 make -j$cores
 make DESTDIR="$prefix_dir" install
