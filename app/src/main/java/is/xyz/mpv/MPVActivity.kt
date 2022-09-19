@@ -15,13 +15,10 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Icon
-import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
-import android.os.ParcelFileDescriptor
+import android.os.*
 import android.preference.PreferenceManager.getDefaultSharedPreferences
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -45,8 +42,12 @@ typealias ActivityResultCallback = (Int, Intent?) -> Unit
 typealias StateRestoreCallback = () -> Unit
 
 class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObserver {
-    private val fadeHandler = Handler()
-    private val stopServiceHandler = Handler()
+    // for calls to eventUi() and eventPropertyUi()
+    private val eventUiHandler = Handler(Looper.getMainLooper())
+    // for use with fadeRunnable1..3
+    private val fadeHandler = Handler(Looper.getMainLooper())
+    // for use with stopServiceRunnable
+    private val stopServiceHandler = Handler(Looper.getMainLooper())
 
     /**
      * DO NOT USE THIS
@@ -232,6 +233,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         onConfigurationChanged(resources.configuration)
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE))
             binding.topPiPBtn.visibility = View.GONE
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN))
+            binding.topLockBtn.visibility = View.GONE
 
         if (showMediaTitle)
             binding.controlsTitleGroup.visibility = View.VISIBLE
@@ -381,6 +384,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         updateMediaSession()
 
         activityIsForeground = false
+        eventUiHandler.removeCallbacksAndMessages(null)
         if (isFinishing) {
             savePosition()
             MPVLib.command(arrayOf("stop"))
@@ -1578,7 +1582,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         if (!activityIsForeground) return
-        runOnUiThread { eventPropertyUi(property) }
+        eventUiHandler.post { eventPropertyUi(property) }
     }
 
     override fun eventProperty(property: String, value: Boolean) {
@@ -1592,7 +1596,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         if (!activityIsForeground) return
-        runOnUiThread { eventPropertyUi(property, value) }
+        eventUiHandler.post { eventPropertyUi(property, value) }
     }
 
     override fun eventProperty(property: String, value: Long) {
@@ -1600,7 +1604,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             updateMediaSession()
 
         if (!activityIsForeground) return
-        runOnUiThread { eventPropertyUi(property, value) }
+        eventUiHandler.post { eventPropertyUi(property, value) }
     }
 
     override fun eventProperty(property: String, value: String) {
@@ -1609,7 +1613,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             updateMediaSession()
 
         if (!activityIsForeground) return
-        runOnUiThread { eventPropertyUi(property, value, triggerMetaUpdate) }
+        eventUiHandler.post { eventPropertyUi(property, value, triggerMetaUpdate) }
     }
 
     override fun event(eventId: Int) {
@@ -1631,7 +1635,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         if (!activityIsForeground) return
-        runOnUiThread { eventUi(eventId) }
+        eventUiHandler.post { eventUi(eventId) }
     }
 
     // Gesture handler
@@ -1660,7 +1664,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 initialBright = Utils.getScreenBrightness(this) ?: 0.5f
                 with (audioManager!!) {
                     initialVolume = getStreamVolume(AudioManager.STREAM_MUSIC)
-                    maxVolume = getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    maxVolume = if (isVolumeFixed)
+                        0
+                    else
+                        getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                 }
                 pausedForSeek = 0
 
@@ -1693,6 +1700,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 gestureTextView.text = getString(R.string.ui_seek_distance, Utils.prettyTime(newPos), diffText)
             }
             PropertyChange.Volume -> {
+                if (maxVolume == 0)
+                    return
                 val newVolume = (initialVolume + (diff * maxVolume).toInt()).coerceIn(0, maxVolume)
                 val newVolumePercent = 100 * newVolume / maxVolume
                 audioManager!!.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
