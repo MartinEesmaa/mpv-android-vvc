@@ -10,7 +10,7 @@ v_ndk_n=24.0.8215888
 v_sdk_build_tools=30.0.3
 
 v_lua=5.2.4
-v_harfbuzz=4.4.1
+v_harfbuzz=5.2.0
 v_fribidi=1.0.12
 v_freetype=2-12-1
 v_mbedtls=2.28.1
