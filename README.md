@@ -14,7 +14,7 @@ mpv-android is a video player for Android based on [libmpv](https://github.com/m
 * Background playback, Picture-in-Picture, keyboard input supported
 
 Note that mpv-android is *not* a library you can embed into your app, but you can look here for inspiration.
-The important parts are [`MPVLib`](app/src/main/java/is/xyz/mpv/MPVLib.java), [`MPVView`](app/src/main/java/is/xyz/mpv/MPVView.kt) and the [native code](app/src/main/jni/).
+The important parts are [`MPVLib`](app/src/main/java/is/vvceasy/mpv/MPVLib.java), [`MPVView`](app/src/main/java/is/vvceasy/mpv/MPVView.kt) and the [native code](app/src/main/jni/).
 libmpv/ffmpeg is built by [these scripts](buildscripts/).
 
 ## Downloads

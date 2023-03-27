@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Simple strings. -->
-    <string name="mpv_activity">mpv</string>
+    <string name="mpv_activity">mpv-vvceasy</string>
     <string name="title_activity_settings">Налаштування</string>
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Скасувати</string>
