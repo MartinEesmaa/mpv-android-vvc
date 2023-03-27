@@ -204,9 +204,9 @@
             android:exported="false" />
         <receiver android:name=".NotificationButtonReceiver" android:exported="false">
             <intent-filter>
-                <action android:name="is.xyz.mpv.PLAY_PAUSE" />
-                <action android:name="is.xyz.mpv.ACTION_PREV" />
-                <action android:name="is.xyz.mpv.ACTION_NEXT" />
+                <action android:name="is.vvceasy.mpv.PLAY_PAUSE" />
+                <action android:name="is.vvceasy.mpv.ACTION_PREV" />
+                <action android:name="is.vvceasy.mpv.ACTION_NEXT" />
             </intent-filter>
         </receiver>
     </application>
