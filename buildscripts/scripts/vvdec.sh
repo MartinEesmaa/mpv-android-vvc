@@ -18,8 +18,8 @@ extra=
 [[ "$ndk_vvdec" == "armeabi-v7a"* ]] && extra="-DANDROID_ARM_NEON=TRUE"
 
 cmake \
-       -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_NAME=Android -DCMAKE_ANDROID_ARCH_ABI=$ndk_vvdec \
-	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r24/build/cmake/android.toolchain.cmake \
+       -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
+	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r25c/build/cmake/android.toolchain.cmake \
 		-DANDROID_STL=c++_shared -DANDROID_PLATFORM=android-$MINSDKVERSION \
 	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
 

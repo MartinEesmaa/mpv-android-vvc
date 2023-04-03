@@ -5,8 +5,8 @@
 # also remember to update path.sh
 
 v_sdk=8512546_latest
-v_ndk=r24
-v_ndk_n=24.0.8215888
+v_ndk=r25c
+v_ndk_n=25.2.9519653
 v_sdk_build_tools=30.0.3
 
 v_lua=5.2.4
