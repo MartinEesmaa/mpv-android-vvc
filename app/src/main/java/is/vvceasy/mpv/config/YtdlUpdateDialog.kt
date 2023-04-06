@@ -1,8 +1,8 @@
-package `is`.xyz.mpv.config
+package `is`.vvceasy.mpv.config
 
-import `is`.xyz.mpv.R
-import `is`.xyz.mpv.Utils
-import `is`.xyz.mpv.databinding.YtdlUpdatePrefBinding
+import `is`.vvceasy.mpv.R
+import `is`.vvceasy.mpv.Utils
+import `is`.vvceasy.mpv.databinding.YtdlUpdatePrefBinding
 import android.content.Context
 import android.preference.DialogPreference
 import android.text.method.ScrollingMovementMethod
