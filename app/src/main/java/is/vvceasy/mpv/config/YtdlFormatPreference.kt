@@ -1,7 +1,7 @@
-package `is`.xyz.mpv.config
+package `is`.vvceasy.mpv.config
 
-import `is`.xyz.mpv.R
-import `is`.xyz.mpv.databinding.YtdlFormatPrefBinding
+import `is`.vvceasy.mpv.R
+import `is`.vvceasy.mpv.databinding.YtdlFormatPrefBinding
 import android.content.Context
 import android.preference.DialogPreference
 import android.util.AttributeSet
