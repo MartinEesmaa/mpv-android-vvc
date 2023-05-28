@@ -17,13 +17,15 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: gh-cache/
-          key: "prefix"
+          key: "prefix-${{ hashFiles('buildscripts/**.sh') }}"
+          restore-keys: "prefix-"
           enableCrossOsArchive: true
 
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install autoconf pkg-config libtool ninja-build meson
+          sudo apt-get install autoconf pkg-config libtool ninja-build python3-pip
+          sudo pip3 install meson
 
       - name: Download deps
         run: |
