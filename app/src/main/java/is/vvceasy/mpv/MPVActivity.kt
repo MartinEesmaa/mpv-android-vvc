@@ -1,7 +1,6 @@
 package `is`.vvceasy.mpv
 
 import `is`.vvceasy.mpv.databinding.PlayerBinding
-
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.annotation.SuppressLint
@@ -26,8 +25,8 @@ import android.util.DisplayMetrics
 import android.util.Rational
 import androidx.core.content.ContextCompat
 import android.view.*
+import android.view.ViewGroup.MarginLayoutParams
 import android.widget.Button
-import android.widget.RelativeLayout
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.annotation.IdRes
@@ -38,6 +37,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
 import java.io.File
 import java.lang.IllegalArgumentException
 import kotlin.math.roundToInt
@@ -213,10 +213,15 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.outside) { _, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
-            val lp = binding.outside.layoutParams as RelativeLayout.LayoutParams
-            lp.leftMargin = insets.left
-            lp.bottomMargin = insets.bottom
-            lp.rightMargin = insets.right
+            val insets2 = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            binding.outside.updateLayoutParams<MarginLayoutParams> {
+                leftMargin = insets.left
+                // Android seems to always reserve space for that status bar at the top,
+                // we don't want that so ignore it. However we still need to account for the cutout.
+                topMargin = insets2.top
+                bottomMargin = insets.bottom
+                rightMargin = insets.right
+            }
             WindowInsetsCompat.CONSUMED
         }
     }
@@ -326,6 +331,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun finishWithResult(code: Int, includeTimePos: Boolean = false) {
         // Refer to http://mpv-android.github.io/mpv-android/intent.html
         // FIXME: should track end-file events to accurately report OK vs CANCELED
+        if (isFinishing) // only count first call
+            return
         val result = Intent(RESULT_INTENT)
         result.data = if (intent.data?.scheme == "file") null else intent.data
         if (includeTimePos) {
@@ -416,6 +423,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         eventUiHandler.removeCallbacksAndMessages(null)
         if (isFinishing) {
             savePosition()
+            // tell mpv to shut down so that any other property changes or such are ignored,
+            // preventing useless busywork
             MPVLib.command(arrayOf("stop"))
         } else if (!shouldBackground) {
             player.paused = true
@@ -822,20 +831,18 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         gestures.setMetrics(dm.widthPixels.toFloat(), dm.heightPixels.toFloat())
 
         // Adjust control margins
-        run {
-            val lp = binding.controls.layoutParams as RelativeLayout.LayoutParams
-
-            lp.bottomMargin = if (!controlsAtBottom) {
-                Utils.convertDp(this, 60f)
+        binding.controls.updateLayoutParams<MarginLayoutParams> {
+            bottomMargin = if (!controlsAtBottom) {
+                Utils.convertDp(this@MPVActivity, 60f)
             } else {
                 0
             }
-            lp.leftMargin = if (!controlsAtBottom) {
-                Utils.convertDp(this, if (isLandscape) 60f else 24f)
+            leftMargin = if (!controlsAtBottom) {
+                Utils.convertDp(this@MPVActivity, if (isLandscape) 60f else 24f)
             } else {
                 0
             }
-            lp.rightMargin = lp.leftMargin
+            rightMargin = leftMargin
         }
     }
 
@@ -885,7 +892,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         val filepath = when (data.scheme) {
             "file" -> data.path
             "content" -> openContentFd(data)
-            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp"
+            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
             -> data.toString()
             else -> null
         }
@@ -991,7 +998,26 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private fun pickAudio() = selectTrack("audio", { player.aid }, { player.aid = it })
 
-    private fun pickSub() = selectTrack("sub", { player.sid }, { player.sid = it })
+    private fun pickSub() {
+        val restore = pauseForDialog()
+        val impl = SubTrackDialog(player)
+        lateinit var dialog: AlertDialog
+        impl.listener = { it, secondary ->
+            if (secondary)
+                player.secondarySid = it.mpvId
+            else
+                player.sid = it.mpvId
+            dialog.dismiss()
+            trackSwitchNotification { TrackData(it.mpvId, SubTrackDialog.TRACK_TYPE) }
+        }
+
+        dialog = with (AlertDialog.Builder(this)) {
+            setView(impl.buildView(layoutInflater))
+            setOnDismissListener { restore() }
+            create()
+        }
+        dialog.show()
+    }
 
     private fun openPlaylistMenu(restore: StateRestoreCallback) {
         val impl = PlaylistDialog(player)
@@ -1650,10 +1676,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun event(eventId: Int) {
-        // finish on idle/shutdown
-        if (playbackHasStarted && eventId == MPVLib.mpvEventId.MPV_EVENT_IDLE)
-            finishWithResult(RESULT_OK)
-        else if (eventId == MPVLib.mpvEventId.MPV_EVENT_SHUTDOWN)
+        if (eventId == MPVLib.mpvEventId.MPV_EVENT_SHUTDOWN)
             finishWithResult(if (playbackHasStarted) RESULT_OK else RESULT_CANCELED)
 
         if (eventId == MPVLib.mpvEventId.MPV_EVENT_START_FILE) {
