@@ -138,7 +138,9 @@ object Utils {
 
         for (path in candidates) {
             var root = File(path)
-            val vol = storageManager.getStorageVolume(root) ?: continue
+            val vol = try {
+                storageManager.getStorageVolume(root)
+            } catch (e: SecurityException) { null } ?: continue
             if (vol.state != Environment.MEDIA_MOUNTED && vol.state != Environment.MEDIA_MOUNTED_READ_ONLY)
                 continue
 
@@ -421,6 +423,6 @@ object Utils {
     // cf. AndroidManifest.xml and MPVActivity.resolveUri()
     val PROTOCOLS = setOf(
         "file", "content", "http", "https",
-        "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp"
+        "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
     )
 }

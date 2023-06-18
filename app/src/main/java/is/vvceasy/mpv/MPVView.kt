@@ -19,9 +19,13 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         MPVLib.setOptionString("config-dir", configDir)
         initOptions() // do this before init() so user-supplied config can override our choices
         MPVLib.init()
-        // certain options are hardcoded:
+        /* Hardcoded options: */
+        // we need to call write-watch-later manually
         MPVLib.setOptionString("save-position-on-quit", "no")
+        // would crash before the surface is attached
         MPVLib.setOptionString("force-window", "no")
+        // "no" wouldn't work and "yes" is not intended by the UI
+        MPVLib.setOptionString("idle", "once")
 
         holder.addCallback(this)
         observeProperties()
@@ -113,7 +117,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         MPVLib.setOptionString("gpu-api", "vulkan")
         MPVLib.setOptionString("opengl-es", "yes")
         MPVLib.setOptionString("hwdec", hwdec)
-        MPVLib.setOptionString("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9")
+        MPVLib.setOptionString("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
         MPVLib.setOptionString("tls-verify", "yes")
         MPVLib.setOptionString("tls-ca-file", "${this.context.filesDir.path}/cacert.pem")
@@ -316,23 +320,24 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
     val videoAspect: Double?
         get() = MPVLib.getPropertyDouble("video-params/aspect")
 
-    class TrackDelegate {
+    class TrackDelegate(private val name: String) {
         operator fun getValue(thisRef: Any?, property: KProperty<*>): Int {
-            val v = MPVLib.getPropertyString(property.name)
+            val v = MPVLib.getPropertyString(name)
             // we can get null here for "no" or other invalid value
             return v?.toIntOrNull() ?: -1
         }
         operator fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
             if (value == -1)
-                MPVLib.setPropertyString(property.name, "no")
+                MPVLib.setPropertyString(name, "no")
             else
-                MPVLib.setPropertyInt(property.name, value)
+                MPVLib.setPropertyInt(name, value)
         }
     }
 
-    var vid: Int by TrackDelegate()
-    var sid: Int by TrackDelegate()
-    var aid: Int by TrackDelegate()
+    var vid: Int by TrackDelegate("vid")
+    var sid: Int by TrackDelegate("sid")
+    var secondarySid: Int by TrackDelegate("secondary-sid")
+    var aid: Int by TrackDelegate("aid")
 
     // Commands
 
