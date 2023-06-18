@@ -85,9 +85,3 @@ HEREDOC
 [ ! -d mpv ] && git clone https://github.com/mpv-player/mpv
 
 cd ..
-
-# youtube-dl
-$WGET https://kitsunemimi.pw/ytdl/dist.zip
-unzip dist.zip -d ../app/src/main/assets/ytdl
-rm -f ../app/src/main/assets/ytdl/youtube-dl # don't need it
-rm dist.zip

@@ -17,11 +17,6 @@
         android:positiveButtonText="@string/dialog_save"
         android:negativeButtonText="@string/dialog_cancel" />
 
-    <is.vvceasy.mpv.config.YtdlUpdateDialog
-        android:key=""
-        android:title="@string/pref_ytdl_update"
-        android:negativeButtonText="@null" />
-
     <is.vvceasy.mpv.config.VersionInfoDialog
         android:key=""
         android:title="@string/pref_version_info"

@@ -30,10 +30,6 @@ android {
         viewBinding = true
     }
 
-    lintOptions {
-        disable 'ExpiredTargetSdkVersion'
-    }
-
     splits {
         abi {
             enable true
