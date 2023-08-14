@@ -212,15 +212,15 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.outside) { _, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
+            // guidance: https://medium.com/androiddevelopers/gesture-navigation-handling-visual-overlaps-4aed565c134c
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
             val insets2 = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
             binding.outside.updateLayoutParams<MarginLayoutParams> {
-                leftMargin = insets.left
-                // Android seems to always reserve space for that status bar at the top,
-                // we don't want that so ignore it. However we still need to account for the cutout.
-                topMargin = insets2.top
-                bottomMargin = insets.bottom
-                rightMargin = insets.right
+                // avoid system bars and cutout
+                leftMargin = Math.max(insets.left, insets2.left)
+                topMargin = Math.max(insets.top, insets2.top)
+                bottomMargin = Math.max(insets.bottom, insets2.bottom)
+                rightMargin = Math.max(insets.right, insets2.right)
             }
             WindowInsetsCompat.CONSUMED
         }
@@ -335,6 +335,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     override fun onDestroy() {
         Log.v(TAG, "Exiting.")
+
+        // Suppress any further callbacks
+        activityIsForeground = false
 
         mediaSession?.isActive = false
         mediaSession?.release()
@@ -720,12 +723,17 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 return true
             }
             KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_CENTER -> {
-                if (ev.action == KeyEvent.ACTION_DOWN) {
-                    val childCount = group1.childCount
-                    if (btnSelected < childCount)
-                        group1.getChildAt(btnSelected)?.performClick()
+                val childCount = group1.childCount
+                val view = if (btnSelected < childCount)
+                    group1.getChildAt(btnSelected)
+                else
+                    group2.getChildAt(btnSelected - childCount)
+                if (ev.action == KeyEvent.ACTION_UP) {
+                    // 500ms appears to be the standard
+                    if (ev.eventTime - ev.downTime > 500L)
+                        view?.performLongClick()
                     else
-                        group2.getChildAt(btnSelected - childCount)?.performClick()
+                        view?.performClick()
                 }
                 return true
             }
@@ -910,7 +918,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return path
         }
         // Else, pass the fd to mpv
-        return "fdclose://${fd}"
+        return "fd://${fd}"
     }
 
     private fun parseIntentExtras(extras: Bundle?) {
