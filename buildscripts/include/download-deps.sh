@@ -46,7 +46,7 @@ if [ ! -d ffmpeg ]; then
 fi
 
 # freetype2
-[ ! -d freetype2 ] && git clone git://git.sv.nongnu.org/freetype/freetype2.git -b VER-$v_freetype
+[ ! -d freetype2 ] && git clone --recurse-submodules git://git.sv.nongnu.org/freetype/freetype2.git -b VER-$v_freetype
 
 # fribidi
 if [ ! -d fribidi ]; then
@@ -68,7 +68,7 @@ fi
 # lua
 if [ ! -d lua ]; then
 	mkdir lua
-	$WGET http://www.lua.org/ftp/lua-$v_lua.tar.gz -O - | \
+	$WGET https://www.lua.org/ftp/lua-$v_lua.tar.gz -O - | \
 		tar -xz -C lua --strip-components=1
 fi
 

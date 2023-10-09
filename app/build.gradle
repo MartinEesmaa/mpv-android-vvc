@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 ext.abiCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86":3, "x86_64":4]
+ext.universalBase = 8000
 
 android {
     namespace 'is.vvceasy.mpv'
@@ -10,8 +11,8 @@ android {
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 31
-        versionName "2023-06-04-release"
+        versionCode 32
+        versionName "2023-08-27-release"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -60,9 +61,11 @@ import com.android.build.VariantOutput
 android.applicationVariants.all { variant ->
     variant.outputs.each { output ->
         def base = project.ext.abiCodes.get(output.getFilter(VariantOutput.ABI))
-        // universal APK keeps the original versionCode
+        // universal APK just gets a constant added to it
         if (base != null)
             output.versionCodeOverride = base * 1000 + variant.versionCode
+        else
+            output.versionCodeOverride = universalBase + variant.versionCode
     }
 }
 
