@@ -31,11 +31,20 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         observeProperties()
     }
 
+    private var voInUse: String = ""
+
     private fun initOptions() {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this.context)
 
         // apply phone-optimized defaults
         MPVLib.setOptionString("profile", "fast")
+
+        // vo
+        val vo = if (sharedPreferences.getBoolean("gpu_next", false))
+            "gpu-next"
+        else
+            "gpu"
+        voInUse = vo
 
         // hwdec
         val hwdec = if (sharedPreferences.getBoolean("hardware_decoding", true))
@@ -107,7 +116,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
             MPVLib.setOptionString("vd-lavc-skiploopfilter", "nonkey")
         }
 
-        MPVLib.setOptionString("vo", "gpu")
+        MPVLib.setOptionString("vo", vo)
         MPVLib.setOptionString("gpu-context", "android")
         MPVLib.setOptionString("opengl-es", "yes")
         MPVLib.setOptionString("hwdec", hwdec)
@@ -125,6 +134,8 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         screenshotDir.mkdirs()
         MPVLib.setOptionString("screenshot-directory", screenshotDir.path)
     }
+
+    private var filePath: String? = null
 
     fun playFile(filePath: String) {
         this.filePath = filePath
@@ -289,8 +300,6 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         return chapters
     }
 
-    private var filePath: String? = null
-
     // Property getters/setters
 
     var paused: Boolean?
@@ -399,7 +408,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
             filePath = null
         } else {
             // We disable video output when the context disappears, enable it back
-            MPVLib.setPropertyString("vo", "gpu")
+            MPVLib.setPropertyString("vo", voInUse)
         }
     }
 
