@@ -9,7 +9,9 @@ mkdir -p deps && cd deps
 
 # libxml2
 if [ ! -d libxml2 ]; then
-	git clone https://github.com/GNOME/libxml2 libxml2
+	mkdir libxml2
+	$WGET ftp://xmlsoft.org/libxml2/libxml2-2.9.12.tar.gz -O - | \
+		tar -xz -C libxml2 --strip-components=1
 fi
 
 # vvdec
