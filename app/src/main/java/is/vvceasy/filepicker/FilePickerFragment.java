@@ -9,18 +9,15 @@ package is.vvceasy.filepicker;
 import is.vvceasy.mpv.R;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.FileObserver;
-import android.util.Log;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.core.content.ContextCompat;
 import androidx.loader.content.Loader;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -35,13 +32,7 @@ import java.util.List;
  */
 public class FilePickerFragment extends AbstractFilePickerFragment<File> {
 
-    protected static final int PERMISSIONS_REQUEST_ID = 1001;
-    protected static final String PERMISSION_PRE33 = Manifest.permission.WRITE_EXTERNAL_STORAGE;
-    protected static final String[] PERMISSIONS_POST33 = {
-            Manifest.permission.READ_MEDIA_AUDIO,
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_VIDEO,
-    };
+    protected static final int PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
     protected boolean showHiddenItems = false;
     protected FileFilter filterPredicate = null;
     private File mRequestedPath = null;
@@ -90,25 +81,11 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
     /**
      * @return true if app has been granted permission to write to the SD-card.
      */
-    public static boolean hasPermission(@NonNull Context context, @NonNull File path) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // user can choose to grant at least one
-            for (String permission : PERMISSIONS_POST33) {
-                if (PackageManager.PERMISSION_GRANTED ==
-                        ContextCompat.checkSelfPermission(context, permission)) {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            return PackageManager.PERMISSION_GRANTED ==
-                    ContextCompat.checkSelfPermission(context, PERMISSION_PRE33);
-        }
-    }
-
     @Override
     protected boolean hasPermission(@NonNull File path) {
-        return hasPermission(requireContext(), path);
+        return PackageManager.PERMISSION_GRANTED ==
+                ContextCompat.checkSelfPermission(getContext(),
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 
     /**
@@ -116,12 +93,15 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
      */
     @Override
     protected void handlePermission(@NonNull File path) {
+//         Should we show an explanation?
+//        if (shouldShowRequestPermissionRationale(
+//                Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+//             Explain to the user why we need permission
+//        }
+
         mRequestedPath = path;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(PERMISSIONS_POST33, PERMISSIONS_REQUEST_ID);
-        } else {
-            requestPermissions(new String[]{PERMISSION_PRE33}, PERMISSIONS_REQUEST_ID);
-        }
+        requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
     /**
@@ -136,32 +116,26 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        if (requestCode != PERMISSIONS_REQUEST_ID)
-            return;
         // If arrays are empty, then process was cancelled
         if (permissions.length == 0) {
             // Treat this as a cancel press
-            if (mListener != null)
+            if (mListener != null) {
                 mListener.onCancelled();
-            return;
-        }
-        boolean ok = false;
-        for (int r : grantResults) {
-            if (PackageManager.PERMISSION_GRANTED == r) {
-                ok = true;
-                break;
             }
-        }
-        if (ok) {
-            // Do refresh
-            if (mRequestedPath != null)
-                refresh(mRequestedPath);
-        } else {
-            Toast.makeText(getContext(), R.string.nnf_permission_external_write_denied,
-                    Toast.LENGTH_SHORT).show();
-            // Treat this as a cancel press
-            if (mListener != null)
-                mListener.onCancelled();
+        } else { // if (requestCode == PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE) {
+            if (PackageManager.PERMISSION_GRANTED == grantResults[0]) {
+                // Do refresh
+                if (mRequestedPath != null) {
+                    refresh(mRequestedPath);
+                }
+            } else {
+                Toast.makeText(getContext(), R.string.nnf_permission_external_write_denied,
+                        Toast.LENGTH_SHORT).show();
+                // Treat this as a cancel press
+                if (mListener != null) {
+                    mListener.onCancelled();
+                }
+            }
         }
     }
 
@@ -265,10 +239,8 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             @Override
             public List<File> loadInBackground() {
                 File[] listFiles = mCurrentPath.listFiles();
-                if (listFiles == null) {
-                    Log.e(TAG, "FilePickerFragment: IO error while listing files");
+                if (listFiles == null)
                     return new ArrayList<>(0);
-                }
 
                 ArrayList<File> files = new ArrayList<>(listFiles.length);
 
@@ -357,6 +329,4 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             return lhs.getName().compareToIgnoreCase(rhs.getName());
         }
     }
-
-    private static final String TAG = "mpv";
 }
