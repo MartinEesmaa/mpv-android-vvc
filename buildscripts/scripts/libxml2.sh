@@ -21,7 +21,7 @@ extra=
 
 ../configure \
 	--host=$ndk_triple $extra \
-	--enable-shared --disable-static \
+	--enable-shared --disable-static --disable-python \
 	--disable-require-system-font-provider
 
 make -j$cores
