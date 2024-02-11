@@ -16,7 +16,6 @@ v_harfbuzz=8.3.0
 v_fribidi=1.0.13
 v_freetype=2-13-2
 v_mbedtls=2.28.4
-v_libxml2=2.9.12
 
 ## Dependency tree
 # I would've used a dict but putting arrays in a dict is not a thing
