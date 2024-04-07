@@ -17,9 +17,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
+import `is`.vvceasy.filepicker.FilePickerFragment
 import `is`.vvceasy.mpv.databinding.FragmentFilepickerChoiceBinding
 import java.io.File
 import java.io.FileFilter
@@ -175,9 +175,7 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
             }
         }
 
-        if (PackageManager.PERMISSION_GRANTED !=
-            ContextCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+        if (!FilePickerFragment.hasPermission(this, File("/"))) {
             Log.v(TAG, "FilePickerActivity: waiting for file picker permission")
             return
         }
