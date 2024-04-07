@@ -2,21 +2,26 @@
 
 . ../../include/path.sh
 
-build=_build$ndk_suffix
-
 if [ "$1" == "build" ]; then
 	true
 elif [ "$1" == "clean" ]; then
-	rm -rf $build
+	rm -rf _build$ndk_suffix
 	exit 0
 else
 	exit 255
 fi
 
-unset CC CXX # meson wants these unset
+mkdir -p _build$ndk_suffix
+cd _build$ndk_suffix
 
-meson setup $build --cross-file "$prefix_dir"/crossfile.txt \
-	-Dftp=false -Ddefault_library=shared
+extra=
+[[ "$ndk_vvdec" == "armeabi-v7a"* ]] && extra="-DANDROID_ARM_NEON=TRUE"
 
-ninja -C $build -j$cores
-DESTDIR="$prefix_dir" ninja -C $build install
+cmake \
+       -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
+	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r26c/build/cmake/android.toolchain.cmake \
+		-DANDROID_STL=c++_shared -DANDROID_PLATFORM=android-21 \
+	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
+
+cmake --build . --config release -j$cores
+cmake --build . --target install
