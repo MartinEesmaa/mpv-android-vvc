@@ -19,7 +19,7 @@ extra=
 
 cmake \
        -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
-	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r25c/build/cmake/android.toolchain.cmake \
+	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r26c/build/cmake/android.toolchain.cmake \
 		-DANDROID_STL=c++_shared -DVVDEC_ENABLE_LINK_TIME_OPT=OFF -DANDROID_PLATFORM=android-21 \
 	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
 
