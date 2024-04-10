@@ -21,7 +21,7 @@ allprojects {
 // Use `./gradlew wrapper` to re-generate it
 tasks {
     wrapper {
-        gradleVersion = "8.5"
+        gradleVersion = "8.7"
         distributionType = Wrapper.DistributionType.BIN
     }
 }
