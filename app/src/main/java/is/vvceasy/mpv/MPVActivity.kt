@@ -184,6 +184,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private var controlsAtBottom = true
     private var showMediaTitle = false
+    private var useTimeRemaining = false
 
     private var ignoreAudioFocus = false
     private var playlistExitWarning = true
@@ -204,6 +205,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             topPiPBtn.setOnClickListener { goIntoPiP() }
             topMenuBtn.setOnClickListener { openTopMenu() }
             unlockBtn.setOnClickListener { unlockUI() }
+            playbackDurationTxt.setOnClickListener {
+                useTimeRemaining = !useTimeRemaining
+                updatePlaybackPos(psc.position_s)
+                updatePlaybackDuration(psc.duration_s)
+            }
 
             cycleAudioBtn.setOnLongClickListener { pickAudio(); true }
             cycleSpeedBtn.setOnLongClickListener { pickSpeed(); true }
@@ -261,7 +267,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         gestures = TouchGestures(this)
 
         // set up initial UI state
-        syncSettings()
+        readSettings()
         onConfigurationChanged(resources.configuration)
         run {
             // edge-to-edge & immersive mode
@@ -429,6 +435,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         } else if (!shouldBackground) {
             player.paused = true
         }
+        writeSettings()
         super.onPause()
 
         didResumeBackgroundPlayback = shouldBackground
@@ -443,7 +450,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
     }
 
-    private fun syncSettings() {
+    private fun readSettings() {
         // FIXME: settings should be in their own class completely
         val prefs = getDefaultSharedPreferences(applicationContext)
         val getString: (String, Int) -> String = { key, defaultRes ->
@@ -464,9 +471,19 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         this.autoRotationMode = getString("auto_rotation", R.string.pref_auto_rotation_default)
         this.controlsAtBottom = prefs.getBoolean("bottom_controls", true)
         this.showMediaTitle = prefs.getBoolean("display_media_title", false)
+        this.useTimeRemaining = prefs.getBoolean("use_time_remaining", false)
         this.ignoreAudioFocus = prefs.getBoolean("ignore_audio_focus", false)
         this.playlistExitWarning = prefs.getBoolean("playlist_exit_warning", true)
         this.smoothSeekGesture = prefs.getBoolean("seek_gesture_smooth", false)
+    }
+
+    private fun writeSettings() {
+        val prefs = getDefaultSharedPreferences(applicationContext)
+
+        with (prefs.edit()) {
+            putBoolean("use_time_remaining", useTimeRemaining)
+            commit()
+        }
     }
 
     override fun onStart() {
@@ -493,7 +510,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         // Init controls to be hidden and view fullscreen
         hideControls()
-        syncSettings()
+        readSettings()
 
         activityIsForeground = true
         // stop background service with a delay
@@ -1098,7 +1115,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private fun cycleSpeed() {
         player.cycleSpeed()
-        updateSpeedButton()
     }
 
     private fun pickSpeed() {
@@ -1107,7 +1123,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         val restore = pauseForDialog()
         genericPickerDialog(picker, R.string.title_speed_dialog, "speed") {
-            updateSpeedButton()
             restore()
         }
     }
@@ -1392,13 +1407,14 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private fun refreshUi() {
         // forces update of entire UI, used when resuming the activity
-        val paused = player.paused ?: return
-        updatePlaybackStatus(paused)
+        updatePlaybackStatus(psc.pause)
         updatePlaybackPos(psc.position_s)
         updatePlaybackDuration(psc.duration_s)
         updateAudioUI()
-        if (useAudioUI || showMediaTitle)
-            updateMetadataDisplay()
+        updateOrientation()
+        updateMetadataDisplay()
+        updateDecoderButton()
+        updateSpeedButton()
         updatePlaylistButtons()
         player.loadTracks()
     }
@@ -1466,16 +1482,24 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     fun updatePlaybackPos(position: Int) {
         binding.playbackPositionTxt.text = Utils.prettyTime(position)
+        if (useTimeRemaining) {
+            val diff = psc.duration_s - position
+            binding.playbackDurationTxt.text = if (diff <= 0)
+                "-00:00"
+            else
+                Utils.prettyTime(-diff, true)
+        }
         if (!userIsOperatingSeekbar)
             binding.playbackSeekbar.progress = position
 
-        updateDecoderButton()
-        updateSpeedButton()
+        // Note: do NOT add other update functions here just because this is called every second.
+        // Use property observation instead.
         updateStats()
     }
 
     private fun updatePlaybackDuration(duration: Int) {
-        binding.playbackDurationTxt.text = Utils.prettyTime(duration)
+        if (!useTimeRemaining)
+            binding.playbackDurationTxt.text = Utils.prettyTime(duration)
         if (!userIsOperatingSeekbar)
             binding.playbackSeekbar.max = duration
     }
@@ -1492,7 +1516,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun updateDecoderButton() {
-        if (binding.cycleDecoderBtn.visibility != View.VISIBLE)
+        if (!binding.cycleDecoderBtn.isVisible)
             return
         binding.cycleDecoderBtn.text = when (player.hwdecActive) {
             "mediacodec" -> "HW+"
@@ -1607,12 +1631,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             override fun onSeekTo(pos: Long) {
                 player.timePos = (pos / 1000).toInt()
             }
-            override fun onSkipToNext() {
-                MPVLib.command(arrayOf("playlist-next"))
-            }
-            override fun onSkipToPrevious() {
-                MPVLib.command(arrayOf("playlist-prev"))
-            }
+            override fun onSkipToNext() = playlistNext()
+            override fun onSkipToPrevious() = playlistPrev()
             override fun onSetRepeatMode(repeatMode: Int) {
                 MPVLib.setPropertyString("loop-playlist",
                     if (repeatMode == PlaybackStateCompat.REPEAT_MODE_ALL) "inf" else "no")
@@ -1638,6 +1658,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "track-list" -> player.loadTracks()
+            "speed" -> updateSpeedButton()
             "video-params/aspect" -> {
                 updateOrientation()
                 updatePiPParams()
