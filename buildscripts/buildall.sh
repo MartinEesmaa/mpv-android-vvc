@@ -80,6 +80,7 @@ setup_prefix () {
 buildtype = 'release'
 default_library = 'static'
 wrap_mode = 'nodownload'
+prefix = '/usr/local'
 [binaries]
 c = '$CC'
 cpp = '$CXX'
