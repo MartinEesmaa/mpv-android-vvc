@@ -39,7 +39,7 @@ fi
 
 # ffmpeg
 if [ ! -d ffmpeg ]; then
-	git clone https://github.com/MartinEesmaa/FFmpeg-FixVVC ffmpeg
+	git clone https://github.com/MartinEesmaa/FFmpeg-VVC ffmpeg
 	[ $TRAVIS -eq 1 ] && ( cd ffmpeg; git checkout $v_travis_ffmpeg )
 fi
 
