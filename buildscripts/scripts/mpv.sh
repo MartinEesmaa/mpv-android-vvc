@@ -15,17 +15,6 @@ fi
 
 unset CC CXX # meson wants these unset
 
-if [ ! -f mpv-vvceasy1.patch ]; then
-    wget https://raw.githubusercontent.com/MartinEesmaa/mpv-winbuild-cmake/master/packages/mpv-vvceasy1.patch
-    git apply mpv-vvceasy1.patch
-else
-    if git apply --check mpv-vvceasy1.patch 2>/dev/null; then
-        :
-    else
-        git apply mpv-vvceasy1.patch
-    fi
-fi
-
 meson setup $build --cross-file "$prefix_dir"/crossfile.txt \
 	--default-library shared \
 	-Diconv=disabled -Dlua=enabled \
