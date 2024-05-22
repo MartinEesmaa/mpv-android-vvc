@@ -46,7 +46,7 @@ loadarch () {
 		cc_triple=$ndk_triple$apilvl
 		prefix_name=x86_64
 	else
-		echo "Invalid architecture"
+		echo "Invalid architecture" >&2
 		exit 1
 	fi
 	export prefix_dir="$PWD/prefix/$prefix_name"
@@ -87,7 +87,7 @@ cpp = '$CXX'
 ar = 'llvm-ar'
 nm = 'llvm-nm'
 strip = 'llvm-strip'
-pkg-config = 'pkg-config'
+pkgconfig = 'pkg-config'
 [host_machine]
 system = 'android'
 cpu_family = '$cpu_family'
@@ -156,6 +156,10 @@ while [ $# -gt 0 ]; do
 		;;
 		-h|--help)
 		usage
+		;;
+		-*)
+		echo "Unknown flag $1" >&2
+		exit 1
 		;;
 		*)
 		target=$1
