@@ -14,15 +14,19 @@ v_unibreak=6.1
 v_harfbuzz=8.5.0
 v_fribidi=1.0.14
 v_freetype=2-13-2
-v_mbedtls=3.5.2
+v_mbedtls=2.28.2
 
 
 ## Dependency tree
 # I would've used a dict but putting arrays in a dict is not a thing
 
+dep_libxml2=()
+dep_vvdec=()
+dep_fdkaac=()
+dep_opus=()
 dep_mbedtls=()
 dep_dav1d=()
-dep_ffmpeg=(mbedtls dav1d)
+dep_ffmpeg=(mbedtls dav1d libxml2 vvdec fdkaac opus)
 dep_freetype2=()
 dep_fribidi=()
 dep_harfbuzz=()

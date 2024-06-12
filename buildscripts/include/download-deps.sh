@@ -7,6 +7,26 @@
 
 mkdir -p deps && cd deps
 
+# libxml2
+if [ ! -d libxml2 ]; then
+	git clone https://github.com/GNOME/libxml2 libxml2
+fi
+
+# vvdec
+if [ ! -d vvdec ]; then
+	git clone https://github.com/fraunhoferhhi/vvdec vvdec
+fi
+
+# fdkaac
+if [ ! -d fdkaac ]; then
+	git clone https://github.com/mstorsjo/fdk-aac fdkaac
+fi
+
+# libopus
+if [ ! -d opus ]; then
+	git clone https://github.com/xiph/opus opus
+fi
+
 # mbedtls
 if [ ! -d mbedtls ]; then
 	mkdir mbedtls
@@ -19,7 +39,7 @@ fi
 
 # ffmpeg
 if [ ! -d ffmpeg ]; then
-	git clone https://github.com/FFmpeg/FFmpeg ffmpeg
+	git clone https://github.com/MartinEesmaa/FFmpeg-VVC ffmpeg
 	[ $TRAVIS -eq 1 ] && ( cd ffmpeg; git checkout $v_travis_ffmpeg )
 fi
 

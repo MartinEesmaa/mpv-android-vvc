@@ -41,6 +41,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
     };
     protected boolean showHiddenItems = false;
     protected FileFilter filterPredicate = null;

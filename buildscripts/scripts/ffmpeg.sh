@@ -28,8 +28,8 @@ args=(
 	--arch=${ndk_triple%%-*} --cpu=$cpu
 	--extra-cflags="-I$prefix_dir/include $cpuflags" --extra-ldflags="-L$prefix_dir/lib"
 
-	--enable-{jni,mediacodec,mbedtls,libdav1d} --disable-vulkan
-	--disable-static --enable-shared --enable-{gpl,version3}
+	--enable-{jni,mediacodec,mbedtls,libdav1d,libvvdec,libfdk-aac,libxml2,libopus} --disable-vulkan
+	--disable-static --enable-shared --enable-{gpl,version3,nonfree}
 
 	# disable unneeded parts
 	--disable-{stripping,doc,programs}
@@ -41,6 +41,8 @@ args=(
 	--enable-encoder=mjpeg,png
 	# useful for the `dump-cache` command
 	--enable-muxer=mov,matroska,mpegts
+	# extra version to use string VVCEasy
+	--extra-version=VVCEasy
 )
 ../configure "${args[@]}"
 
