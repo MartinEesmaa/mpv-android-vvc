@@ -4,9 +4,12 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.res.AssetManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
+import android.os.Parcelable
 import android.os.storage.StorageManager
 import android.provider.Settings
 import android.support.v4.media.MediaMetadataCompat
@@ -19,9 +22,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
+import androidx.core.os.BundleCompat
 import androidx.core.widget.addTextChangedListener
 import java.io.*
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 internal object Utils {
     fun copyAssets(context: Context) {
@@ -198,15 +204,26 @@ internal object Utils {
 
         fun readAll() {
             mediaTitle = MPVLib.getPropertyString("media-title")
-            mediaArtist = MPVLib.getPropertyString("metadata/by-key/Artist")
-            mediaAlbum = MPVLib.getPropertyString("metadata/by-key/Album")
+            update("metadata") // read artist & album
         }
 
+        /** callback for properties of type <code>MPV_FORMAT_NONE</code> */
+        fun update(property: String): Boolean {
+            // TODO?: maybe one day this could natively handle a MPV_FORMAT_NODE_MAP
+            if (property == "metadata") {
+                // If we observe individual keys libmpv won't notify us once they become
+                // unavailable, so we observe "metadata" and read both keys on trigger.
+                mediaArtist = MPVLib.getPropertyString("metadata/by-key/Artist")
+                mediaAlbum = MPVLib.getPropertyString("metadata/by-key/Album")
+                return true
+            }
+            return false
+        }
+
+        /** callback for properties of type <code>MPV_FORMAT_STRING</code> */
         fun update(property: String, value: String): Boolean {
             when (property) {
                 "media-title" -> mediaTitle = value
-                "metadata/by-key/Artist" -> mediaArtist = value
-                "metadata/by-key/Album" -> mediaAlbum = value
                 else -> return false
             }
             return true
@@ -254,7 +271,12 @@ internal object Utils {
         /** playback position in seconds */
         val positionSec get() = (position / 1000).toInt()
         /** duration in seconds */
-        val durationSec get() = (duration / 1000).toInt()
+        val durationSec get() = (duration / 1000f).roundToInt()
+
+        /** callback for properties of type <code>MPV_FORMAT_NONE</code> */
+        fun update(property: String): Boolean {
+            return meta.update(property)
+        }
 
         /** callback for properties of type <code>MPV_FORMAT_STRING</code> */
         fun update(property: String, value: String): Boolean {
@@ -281,9 +303,17 @@ internal object Utils {
         fun update(property: String, value: Long): Boolean {
             when (property) {
                 "time-pos" -> position = value * 1000
-                "duration" -> duration = value * 1000
                 "playlist-pos" -> playlistPos = value.toInt()
                 "playlist-count" -> playlistCount = value.toInt()
+                else -> return false
+            }
+            return true
+        }
+
+        /** callback for properties of type <code>MPV_FORMAT_DOUBLE</code> */
+        fun update(property: String, value: Double): Boolean {
+            when (property) {
+                "duration/full" -> duration = ceil(value * 1000.0).coerceAtLeast(0.0).toLong()
                 else -> return false
             }
             return true
@@ -393,6 +423,22 @@ internal object Utils {
             get() = editText.text.toString()
     }
 
+    inline fun <reified T: Parcelable> getParcelableArray(bundle: Bundle, key: String): Array<T> {
+        val array = BundleCompat.getParcelableArray(bundle, key, T::class.java)
+        return if (array == null)
+            emptyArray()
+        else // the result is not T[] nor castable because BundleCompat is stupid
+            array.mapNotNull { it as? T }.toTypedArray()
+    }
+
+    /**
+     * Helper method to determine if the device has an extra-large screen. For
+     * example, 10" tablets are extra-large.
+     */
+    fun isXLargeTablet(context: Context): Boolean {
+        return context.resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK >= Configuration.SCREENLAYOUT_SIZE_XLARGE
+    }
+
     private const val TAG = "mpv"
 
     // This is used to filter files in the file picker, so it contains just about everything
@@ -427,7 +473,7 @@ internal object Utils {
 
     // cf. AndroidManifest.xml and MPVActivity.resolveUri()
     val PROTOCOLS = setOf(
-        "file", "content", "http", "https",
+        "file", "content", "http", "https", "data",
         "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
     )
 }

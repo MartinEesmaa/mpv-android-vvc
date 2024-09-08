@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.IBinder
@@ -14,6 +15,8 @@ import androidx.annotation.StringRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.PendingIntentCompat
+import androidx.core.app.ServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 
 /*
@@ -42,13 +45,9 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
         }
     }
 
-    @SuppressLint("UnspecifiedImmutableFlag")
     private fun buildNotification(): Notification {
         val notificationIntent = Intent(this, MPVActivity::class.java)
-        val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
-        else
-            PendingIntent.getActivity(this, 0, notificationIntent, 0)
+        val pendingIntent = PendingIntentCompat.getActivity(this, 0, notificationIntent, 0, false)
 
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
 
@@ -97,6 +96,12 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
         return builder.build()
     }
 
+    @SuppressLint("NotificationPermission") // not required for foreground service
+    private fun refreshNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(NOTIFICATION_ID, buildNotification())
+    }
+
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.v(TAG, "BackgroundPlaybackService: starting")
 
@@ -109,13 +114,21 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
         // create notification and turn this into a "foreground service"
 
         val notification = buildNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        } else {
+            0
+        }
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
 
         return START_NOT_STICKY // Android can't restart this service on its own
     }
 
     override fun onDestroy() {
         MPVLib.removeObserver(this)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
 
         Log.v(TAG, "BackgroundPlaybackService: destroyed")
     }
@@ -124,25 +137,27 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
 
     /* Event observers */
 
-    override fun eventProperty(property: String) { }
+    override fun eventProperty(property: String) {
+        if (!cachedMetadata.update(property))
+            return
+        refreshNotification()
+    }
 
     override fun eventProperty(property: String, value: Boolean) {
         if (property != "pause")
             return
         paused = value
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, buildNotification())
+        refreshNotification()
     }
 
     override fun eventProperty(property: String, value: Long) { }
 
+    override fun eventProperty(property: String, value: Double) { }
+
     override fun eventProperty(property: String, value: String) {
         if (!cachedMetadata.update(property, value))
             return
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, buildNotification())
+        refreshNotification()
     }
 
     override fun event(eventId: Int) {

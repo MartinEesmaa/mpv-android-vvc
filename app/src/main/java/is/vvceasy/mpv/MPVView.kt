@@ -1,51 +1,28 @@
 package `is`.xyz.mpv
 
 import android.content.Context
-import android.util.AttributeSet
-import android.util.Log
-
-import `is`.xyz.mpv.MPVLib.mpvFormat.*
 import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
+import android.util.AttributeSet
+import android.util.Log
 import android.view.*
+import androidx.core.content.ContextCompat
+import `is`.xyz.mpv.MPVLib.mpvFormat.*
 import kotlin.reflect.KProperty
 
-internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(context, attrs), SurfaceHolder.Callback {
-    fun initialize(configDir: String, cacheDir: String) {
-        MPVLib.create(this.context)
-        MPVLib.setOptionString("config", "yes")
-        MPVLib.setOptionString("config-dir", configDir)
-        for (opt in arrayOf("gpu-shader-cache-dir", "icc-cache-dir"))
-            MPVLib.setOptionString(opt, cacheDir)
-        initOptions() // do this before init() so user-supplied config can override our choices
-        MPVLib.init()
-        /* Hardcoded options: */
-        // we need to call write-watch-later manually
-        MPVLib.setOptionString("save-position-on-quit", "no")
-        // would crash before the surface is attached
-        MPVLib.setOptionString("force-window", "no")
-        // "no" wouldn't work and "yes" is not intended by the UI
-        MPVLib.setOptionString("idle", "once")
-
-        holder.addCallback(this)
-        observeProperties()
-    }
-
-    private var voInUse: String = ""
-
-    private fun initOptions() {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this.context)
+internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context, attrs) {
+    override fun initOptions() {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
 
         // apply phone-optimized defaults
         MPVLib.setOptionString("profile", "fast")
 
         // vo
-        val vo = if (sharedPreferences.getBoolean("gpu_next", false))
+        setVo(if (sharedPreferences.getBoolean("gpu_next", false))
             "gpu-next"
         else
-            "gpu"
-        voInUse = vo
+            "gpu")
 
         // hwdec
         val hwdec = if (sharedPreferences.getBoolean("hardware_decoding", true))
@@ -55,8 +32,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
 
         // vo: set display fps as reported by android
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            val disp = wm.defaultDisplay
+            val disp = ContextCompat.getDisplayOrDefault(context)
             val refreshRate = disp.mode.refreshRate
 
             Log.v(TAG, "Display ${disp.displayId} reports FPS of $refreshRate")
@@ -93,8 +69,6 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
                 MPVLib.setOptionString(mpv_option, preference)
         }
 
-        // set more options
-
         val debandMode = sharedPreferences.getString("video_debanding", "")
         if (debandMode == "gradfun") {
             // lower the default radius (16) to improve performance
@@ -117,7 +91,6 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
             MPVLib.setOptionString("vd-lavc-skiploopfilter", "nonkey")
         }
 
-        MPVLib.setOptionString("vo", vo)
         MPVLib.setOptionString("gpu-context", "android")
         MPVLib.setOptionString("opengl-es", "yes")
         MPVLib.setOptionString("hwdec", hwdec)
@@ -136,18 +109,9 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         MPVLib.setOptionString("screenshot-directory", screenshotDir.path)
     }
 
-    private var filePath: String? = null
-
-    fun playFile(filePath: String) {
-        this.filePath = filePath
-    }
-
-    // Called when back button is pressed, or app is shutting down
-    fun destroy() {
-        // Disable surface callbacks to avoid using unintialized mpv state
-        holder.removeCallback(this)
-
-        MPVLib.destroy()
+    override fun postInitOptions() {
+        // we need to call write-watch-later manually
+        MPVLib.setOptionString("save-position-on-quit", "no")
     }
 
     fun onPointerEvent(event: MotionEvent): Boolean {
@@ -205,27 +169,23 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         return true
     }
 
-    private fun observeProperties() {
+    override fun observeProperties() {
         // This observes all properties needed by MPVView, MPVActivity or other classes
         data class Property(val name: String, val format: Int = MPV_FORMAT_NONE)
         val p = arrayOf(
             Property("time-pos", MPV_FORMAT_INT64),
-            Property("duration", MPV_FORMAT_INT64),
+            Property("duration/full", MPV_FORMAT_DOUBLE),
             Property("pause", MPV_FORMAT_FLAG),
             Property("paused-for-cache", MPV_FORMAT_FLAG),
             Property("speed", MPV_FORMAT_STRING),
             Property("track-list"),
-            // observing double properties is not hooked up in the JNI code, but doing this
-            // will restrict updates to when it actually changes
             Property("video-params/aspect", MPV_FORMAT_DOUBLE),
             Property("video-params/rotate", MPV_FORMAT_DOUBLE),
-            //
             Property("playlist-pos", MPV_FORMAT_INT64),
             Property("playlist-count", MPV_FORMAT_INT64),
             Property("video-format"),
             Property("media-title", MPV_FORMAT_STRING),
-            Property("metadata/by-key/Artist", MPV_FORMAT_STRING),
-            Property("metadata/by-key/Album", MPV_FORMAT_STRING),
+            Property("metadata"),
             Property("loop-playlist"),
             Property("loop-file"),
             Property("shuffle", MPV_FORMAT_FLAG),
@@ -317,10 +277,11 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
         get() = MPVLib.getPropertyBoolean("pause")
         set(paused) = MPVLib.setPropertyBoolean("pause", paused!!)
 
-    var timePos: Int?
-        get() = MPVLib.getPropertyInt("time-pos")
-        set(progress) = MPVLib.setPropertyInt("time-pos", progress!!)
+    var timePos: Double?
+        get() = MPVLib.getPropertyDouble("time-pos/full")
+        set(progress) = MPVLib.setPropertyDouble("time-pos", progress!!)
 
+    /** name of currently active hardware decoder or "no" */
     val hwdecActive: String
         get() = MPVLib.getPropertyString("hwdec-current") ?: "no"
 
@@ -420,34 +381,6 @@ internal class MPVView(context: Context, attrs: AttributeSet) : SurfaceView(cont
             return
         MPVLib.command(arrayOf(if (newState) "playlist-shuffle" else "playlist-unshuffle"))
         MPVLib.setPropertyBoolean("shuffle", newState)
-    }
-
-    // Surface callbacks
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        MPVLib.setPropertyString("android-surface-size", "${width}x$height")
-    }
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        Log.w(TAG, "attaching surface")
-        MPVLib.attachSurface(holder.surface)
-        // This forces mpv to render subs/osd/whatever into our surface even if it would ordinarily not
-        MPVLib.setOptionString("force-window", "yes")
-
-        if (filePath != null) {
-            MPVLib.command(arrayOf("loadfile", filePath as String))
-            filePath = null
-        } else {
-            // We disable video output when the context disappears, enable it back
-            MPVLib.setPropertyString("vo", voInUse)
-        }
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        Log.w(TAG, "detaching surface")
-        MPVLib.setPropertyString("vo", "null")
-        MPVLib.setOptionString("force-window", "no")
-        MPVLib.detachSurface()
     }
 
     companion object {

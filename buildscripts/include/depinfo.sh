@@ -4,15 +4,15 @@
 # Make sure to keep v_ndk and v_ndk_n in sync, both are listed on the NDK download page
 
 v_sdk=11076708_latest
-v_ndk=r26d
-v_ndk_n=26.3.11579264
+v_ndk=r27
+v_ndk_n=27.0.12077973
 v_sdk_platform=34
 v_sdk_build_tools=34.0.0
 
 v_lua=5.2.4
 v_unibreak=6.1
-v_harfbuzz=8.5.0
-v_fribidi=1.0.14
+v_harfbuzz=9.0.0
+v_fribidi=1.0.15
 v_freetype=2-13-2
 v_mbedtls=2.28.2
 
@@ -41,7 +41,7 @@ dep_mpv_android=(mpv)
 ## Travis-related
 
 # pinned ffmpeg commit used by CI
-v_travis_ffmpeg=n6.1.1
+v_travis_ffmpeg=n7.0.1
 
 # filename used to uniquely identify a build prefix
 travis_tarball="prefix-ndk-${v_ndk}-lua-${v_lua}-unibreak-${v_unibreak}-harfbuzz-${v_harfbuzz}-fribidi-${v_fribidi}-freetype-${v_freetype}-mbedtls-${v_mbedtls}-ffmpeg-${v_travis_ffmpeg}.tgz"

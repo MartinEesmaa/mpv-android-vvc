@@ -6,6 +6,7 @@ import `is`.xyz.mpv.databinding.FragmentMainScreenBinding
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.preference.PreferenceManager
@@ -13,6 +14,8 @@ import android.util.Log
 import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 
 class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
@@ -98,6 +101,34 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
             saveChoice("") // will reset
             startActivity(Intent(context, SettingsActivity::class.java))
         }
+
+        if (BuildConfig.DEBUG) {
+            binding.settingsBtn.setOnLongClickListener { showDebugMenu(); true }
+        }
+
+        onConfigurationChanged(view.resources.configuration)
+    }
+
+    private fun showDebugMenu() {
+        assert(BuildConfig.DEBUG)
+        val context = requireContext()
+        with (AlertDialog.Builder(context)) {
+            setItems(DEBUG_ACTIVITIES) { dialog, idx ->
+                dialog.dismiss()
+                val intent = Intent(Intent.ACTION_MAIN)
+                intent.setClassName(context, "${context.packageName}.${DEBUG_ACTIVITIES[idx]}")
+                startActivity(intent)
+            }
+            create().show()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // phone screens are too small to show the action buttons alongside the logo
+        if (!Utils.isXLargeTablet(requireContext())) {
+            binding.logo.isVisible = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
+        }
     }
 
     override fun onResume() {
@@ -173,5 +204,10 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
 
     companion object {
         private const val TAG = "mpv"
+
+        // list of debug or testing activities that can be launched
+        private val DEBUG_ACTIVITIES = arrayOf(
+            "IntentTestActivity"
+        )
     }
 }

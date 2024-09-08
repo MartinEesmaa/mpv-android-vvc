@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.*
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +43,10 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
 
         setContentView(R.layout.activity_filepicker)
         supportActionBar?.title = ""
+
+        onBackPressedDispatcher.addCallback(this) {
+            onBackPressedImpl()
+        }
 
         // The basic issue we have here is this: https://stackoverflow.com/questions/31190612/
         // Some part of the view hierachy swallows the insets during fragment transitions
@@ -218,13 +223,13 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
         }
     }
 
-    override fun dispatchKeyEvent(ev: KeyEvent?): Boolean {
+    override fun dispatchKeyEvent(ev: KeyEvent): Boolean {
         // If up is pressed at the header element display the usual options menu as a popup menu
         // to make it usable on Android TV.
         var openMenu = false
         if (fragment == null) {
             // only for file picker
-        } else if (ev?.action == KeyEvent.ACTION_DOWN && ev.keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+        } else if (ev.action == KeyEvent.ACTION_DOWN && ev.keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             val recycler: RecyclerView = findViewById(android.R.id.list)
             val holder = try {
                 window.currentFocus?.let { recycler.getChildViewHolder(it) }
@@ -280,7 +285,7 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
         }
     }
 
-    override fun onBackPressed() {
+    private fun onBackPressedImpl() {
         fragment?.apply {
             if (!isBackTop) {
                 goUp()
