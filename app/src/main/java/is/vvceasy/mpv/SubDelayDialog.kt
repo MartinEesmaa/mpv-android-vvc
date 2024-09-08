@@ -1,6 +1,6 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
-import `is`.vvceasy.mpv.databinding.DialogDecimalBinding
+import `is`.xyz.mpv.databinding.DialogDecimalBinding
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater

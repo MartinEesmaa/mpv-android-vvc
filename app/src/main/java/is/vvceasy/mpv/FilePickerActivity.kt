@@ -1,6 +1,6 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
-import `is`.vvceasy.filepicker.AbstractFilePickerFragment
+import `is`.xyz.filepicker.AbstractFilePickerFragment
 import android.app.UiModeManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,8 +19,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
-import `is`.vvceasy.filepicker.FilePickerFragment
-import `is`.vvceasy.mpv.databinding.FragmentFilepickerChoiceBinding
+import `is`.xyz.filepicker.FilePickerFragment
+import `is`.xyz.mpv.databinding.FragmentFilepickerChoiceBinding
 import java.io.File
 import java.io.FileFilter
 

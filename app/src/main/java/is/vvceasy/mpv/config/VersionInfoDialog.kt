@@ -1,8 +1,8 @@
-package `is`.vvceasy.mpv.config
+package `is`.xyz.mpv.config
 
-import `is`.vvceasy.mpv.BuildConfig
-import `is`.vvceasy.mpv.MPVLib
-import `is`.vvceasy.mpv.R
+import `is`.xyz.mpv.BuildConfig
+import `is`.xyz.mpv.MPVLib
+import `is`.xyz.mpv.R
 import android.content.Context
 import android.util.AttributeSet
 import android.preference.DialogPreference

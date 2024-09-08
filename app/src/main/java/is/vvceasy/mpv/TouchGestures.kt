@@ -1,4 +1,4 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
 import android.content.SharedPreferences
 import android.content.res.Resources

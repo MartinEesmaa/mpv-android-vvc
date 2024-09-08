@@ -1,4 +1,4 @@
-package is.vvceasy.mpv;
+package is.xyz.mpv;
 
 // Wrapper for native library
 

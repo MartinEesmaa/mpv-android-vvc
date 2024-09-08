@@ -1,4 +1,4 @@
-package is.vvceasy.filepicker;
+package is.xyz.filepicker;
 
 import android.content.ContentResolver;
 import android.content.Context;

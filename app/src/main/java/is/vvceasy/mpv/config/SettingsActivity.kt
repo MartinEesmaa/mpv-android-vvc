@@ -1,7 +1,7 @@
-package `is`.vvceasy.mpv.config
+package `is`.xyz.mpv.config
 
 
-import `is`.vvceasy.mpv.R
+import `is`.xyz.mpv.R
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration

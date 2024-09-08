@@ -1,4 +1,4 @@
-package is.vvceasy.mpv;
+package is.xyz.mpv;
 
 // Mapping between Android and mpv keycodes (special keys)
 

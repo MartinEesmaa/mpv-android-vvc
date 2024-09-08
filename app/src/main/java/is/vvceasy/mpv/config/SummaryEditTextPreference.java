@@ -1,4 +1,4 @@
-package is.vvceasy.mpv.config;
+package is.xyz.mpv.config;
 
 import android.content.Context;
 import android.preference.EditTextPreference;

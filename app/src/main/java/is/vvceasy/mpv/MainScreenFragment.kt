@@ -1,8 +1,8 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
-import `is`.vvceasy.filepicker.DocumentPickerFragment
-import `is`.vvceasy.mpv.config.SettingsActivity
-import `is`.vvceasy.mpv.databinding.FragmentMainScreenBinding
+import `is`.xyz.filepicker.DocumentPickerFragment
+import `is`.xyz.mpv.config.SettingsActivity
+import `is`.xyz.mpv.databinding.FragmentMainScreenBinding
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent

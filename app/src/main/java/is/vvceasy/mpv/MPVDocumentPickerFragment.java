@@ -1,11 +1,11 @@
-package is.vvceasy.mpv;
+package is.xyz.mpv;
 
 import android.net.Uri;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 
-import is.vvceasy.filepicker.DocumentPickerFragment;
+import is.xyz.filepicker.DocumentPickerFragment;
 
 public class MPVDocumentPickerFragment extends DocumentPickerFragment {
 

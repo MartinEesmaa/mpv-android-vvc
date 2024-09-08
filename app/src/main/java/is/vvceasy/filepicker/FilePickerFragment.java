@@ -4,9 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package is.vvceasy.filepicker;
+package is.xyz.filepicker;
 
-import is.vvceasy.mpv.R;
+import is.xyz.mpv.R;
 
 import android.Manifest;
 import android.content.Context;

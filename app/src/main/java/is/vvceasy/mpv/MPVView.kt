@@ -1,10 +1,10 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
 import android.content.Context
 import android.util.AttributeSet
 import android.util.Log
 
-import `is`.vvceasy.mpv.MPVLib.mpvFormat.*
+import `is`.xyz.mpv.MPVLib.mpvFormat.*
 import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager

@@ -1,6 +1,6 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
-import `is`.vvceasy.mpv.databinding.PlayerBinding
+import `is`.xyz.mpv.databinding.PlayerBinding
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import androidx.appcompat.app.AlertDialog
@@ -1884,7 +1884,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         private const val RCODE_EXTERNAL_SUB = 1001
         private const val RCODE_LOAD_FILE = 1002
         // action of result intent
-        private const val RESULT_INTENT = "is.vvceasy.mpv.MPVActivity.result"
+        private const val RESULT_INTENT = "is.xyz.mpv.MPVActivity.result"
         // stream type used with AudioManager
         private const val STREAM_TYPE = AudioManager.STREAM_MUSIC
     }

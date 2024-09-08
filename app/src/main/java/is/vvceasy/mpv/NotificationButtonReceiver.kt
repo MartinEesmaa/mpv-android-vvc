@@ -1,4 +1,4 @@
-package `is`.vvceasy.mpv
+package `is`.xyz.mpv
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
@@ -33,6 +33,6 @@ class NotificationButtonReceiver : BroadcastReceiver() {
         }
 
         private const val TAG = "mpv"
-        private const val PREFIX = "is.vvceasy.mpv"
+        private const val PREFIX = "is.xyz.mpv"
     }
 }

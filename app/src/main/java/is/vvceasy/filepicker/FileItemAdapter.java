@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package is.vvceasy.filepicker;
+package is.xyz.filepicker;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

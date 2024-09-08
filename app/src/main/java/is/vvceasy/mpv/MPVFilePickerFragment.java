@@ -1,4 +1,4 @@
-package is.vvceasy.mpv;
+package is.xyz.mpv;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
 
-import is.vvceasy.filepicker.FilePickerFragment;
+import is.xyz.filepicker.FilePickerFragment;
 
 import java.io.File;
 

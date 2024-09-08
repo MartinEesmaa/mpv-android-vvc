@@ -7,7 +7,7 @@
         android:summary="@string/pref_gpu_next_summary"
         android:title="@string/pref_gpu_next_title" />
 
-    <is.vvceasy.mpv.config.ConfigEditDialog
+    <is.xyz.mpv.config.ConfigEditDialog
         android:key=""
         app:filename="mpv.conf"
         android:title="@string/pref_edit_mpv_conf"
@@ -15,7 +15,7 @@
         android:positiveButtonText="@string/dialog_save"
         android:negativeButtonText="@string/dialog_cancel" />
 
-    <is.vvceasy.mpv.config.ConfigEditDialog
+    <is.xyz.mpv.config.ConfigEditDialog
         android:key=""
         app:filename="input.conf"
         android:title="@string/pref_edit_input_conf"
@@ -23,7 +23,7 @@
         android:positiveButtonText="@string/dialog_save"
         android:negativeButtonText="@string/dialog_cancel" />
 
-    <is.vvceasy.mpv.config.VersionInfoDialog
+    <is.xyz.mpv.config.VersionInfoDialog
         android:key=""
         android:title="@string/pref_version_info"
         android:negativeButtonText="@null" />
