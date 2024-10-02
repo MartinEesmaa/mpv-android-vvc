@@ -2,7 +2,7 @@
 
 . ./include/depinfo.sh
 
-[ -z "$TRAVIS" ] && TRAVIS=0
+[ -z "$IN_CI" ] && IN_CI=0
 [ -z "$WGET" ] && WGET=wget
 
 mkdir -p deps && cd deps
@@ -40,7 +40,7 @@ fi
 # ffmpeg
 if [ ! -d ffmpeg ]; then
 	git clone https://github.com/MartinEesmaa/FFmpeg-VVC ffmpeg
-	[ $TRAVIS -eq 1 ] && ( cd ffmpeg; git checkout $v_travis_ffmpeg )
+	[ $IN_CI -eq 1 ] && git -C ffmpeg checkout $v_ci_ffmpeg
 fi
 
 # freetype2

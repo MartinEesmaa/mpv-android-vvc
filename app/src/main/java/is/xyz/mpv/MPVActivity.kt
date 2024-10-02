@@ -485,7 +485,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         this.backgroundPlayMode = getString("background_play", R.string.pref_background_play_default)
         this.noUIPauseMode = getString("no_ui_pause", R.string.pref_no_ui_pause_default)
         this.shouldSavePosition = prefs.getBoolean("save_position", false)
-        this.autoRotationMode = getString("auto_rotation", R.string.pref_auto_rotation_default)
+        if (this.autoRotationMode != "manual") // don't reset
+            this.autoRotationMode = getString("auto_rotation", R.string.pref_auto_rotation_default)
         this.controlsAtBottom = prefs.getBoolean("bottom_controls", true)
         this.showMediaTitle = prefs.getBoolean("display_media_title", false)
         this.useTimeRemaining = prefs.getBoolean("use_time_remaining", false)
@@ -1289,15 +1290,17 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                     MPVLib.command(arrayOf("add", "chapter", "1")); true
                 },
                 MenuItem(R.id.advancedBtn) { openAdvancedMenu(restoreState); false },
-                MenuItem(R.id.orientationBtn) { this.cycleOrientation(); true }
+                MenuItem(R.id.orientationBtn) {
+                    autoRotationMode = "manual"
+                    cycleOrientation()
+                    true
+                }
         )
 
         if (player.aid == -1)
             hiddenButtons.add(R.id.backgroundBtn)
         if (MPVLib.getPropertyInt("chapter-list/count") ?: 0 == 0)
             hiddenButtons.add(R.id.rowChapter)
-        if (autoRotationMode == "auto")
-            hiddenButtons.add(R.id.orientationBtn)
         /******/
 
         genericMenu(R.layout.dialog_top_menu, buttons, hiddenButtons, restoreState)
