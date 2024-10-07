@@ -15,6 +15,7 @@ fi
 # vvdec
 if [ ! -d vvdec ]; then
 	git clone https://github.com/fraunhoferhhi/vvdec vvdec
+	git -C vvdec checkout 7eeb48e4ed391f56c0fa66969c6bc7f78f2db629
 fi
 
 # fdkaac
