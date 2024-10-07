@@ -15,7 +15,7 @@ mkdir -p _build$ndk_suffix
 cd _build$ndk_suffix
 
 extra=
-[[ "$ndk_vvdec" == "armeabi-v7a"* ]] && extra="-DCMAKE_ANDROID_ARM_NEON=TRUE"
+[[ "$ndk_vvdec" == "armeabi-v7a"* ]] && extra="-DANDROID_ARM_NEON=TRUE"
 
 cmake \
        -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
