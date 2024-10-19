@@ -8,9 +8,9 @@
 mkdir -p deps && cd deps
 
 # libxml2
-if [ ! -d libxml2 ]; then
-	git clone https://github.com/GNOME/libxml2 libxml2
-fi
+# if [ ! -d libxml2 ]; then
+# 	git clone https://github.com/GNOME/libxml2 libxml2
+# fi
 
 # vvdec
 if [ ! -d vvdec ]; then
@@ -65,13 +65,6 @@ if [ ! -d unibreak ]; then
 	mkdir unibreak
 	$WGET https://github.com/adah1972/libunibreak/releases/download/libunibreak_${v_unibreak/./_}/libunibreak-${v_unibreak}.tar.gz -O - | \
 		tar -xz -C unibreak --strip-components=1
-fi
-
-# iconv
-if [ ! -d iconv ]; then
-	mkdir iconv
-	$WGET https://ftp.gnu.org/pub/gnu/libiconv/libiconv-$v_iconv.tar.gz -O - | \
-		tar -xz -C iconv --strip-components=1
 fi
 
 # libass

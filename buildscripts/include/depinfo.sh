@@ -15,20 +15,18 @@ v_harfbuzz=10.0.1
 v_fribidi=1.0.16
 v_freetype=2-13-3
 v_mbedtls=3.6.1
-v_iconv=1.17
 
 
 ## Dependency tree
 # I would've used a dict but putting arrays in a dict is not a thing
 
-dep_iconv=()
-dep_libxml2=(iconv)
+#dep_libxml2=()
 dep_vvdec=()
 dep_fdkaac=()
 dep_opus=()
 dep_mbedtls=()
 dep_dav1d=()
-dep_ffmpeg=(mbedtls dav1d libxml2 vvdec fdkaac opus)
+dep_ffmpeg=(mbedtls dav1d vvdec fdkaac opus)
 dep_freetype2=()
 dep_fribidi=()
 dep_harfbuzz=()
