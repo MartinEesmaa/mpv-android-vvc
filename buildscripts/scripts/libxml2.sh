@@ -19,8 +19,8 @@ extra=
 
 cmake \
        -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
-	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-r26c/build/cmake/android.toolchain.cmake \
-		-DANDROID_STL=c++_shared -DANDROID_PLATFORM=android-21 -DLIBXML2_WITH_{PYTHON,TESTS}=OFF \
+	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-$v_ndk/build/cmake/android.toolchain.cmake \
+		-DBUILD_SHARED_LIBS=ON -DANDROID_PLATFORM=android-21 -DLIBXML2_WITH_ICONV=OFF \
 	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
 
 cmake --build . --config release -j$cores
