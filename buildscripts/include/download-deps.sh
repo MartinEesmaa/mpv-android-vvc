@@ -67,6 +67,13 @@ if [ ! -d unibreak ]; then
 		tar -xz -C unibreak --strip-components=1
 fi
 
+# iconv
+if [ ! -d iconv ]; then
+	mkdir iconv
+	$WGET https://ftp.gnu.org/pub/gnu/libiconv/libiconv-$v_iconv.tar.gz -O - | \
+		tar -xz -C iconv --strip-components=1
+fi
+
 # libass
 [ ! -d libass ] && git clone https://github.com/libass/libass
 
