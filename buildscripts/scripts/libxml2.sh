@@ -13,18 +13,17 @@ else
 	exit 255
 fi
 
-[ -f configure ] || ./autogen.sh
-
 mkdir -p $build
 cd $build
 
 extra=
-[[ "$ndk_triple" == "i686"* ]] && extra="--disable-asm"
+[[ "$ndk_vvdec" == "armeabi-v7a"* ]] && extra="-DANDROID_ARM_NEON=TRUE"
 
-../configure \
-	--host=$ndk_triple $extra \
-	--enable-shared --disable-static \
-	--disable-require-system-font-provider
+cmake \
+       -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=$ndk_vvdec \
+	    -DCMAKE_TOOLCHAIN_FILE=${HOME}/mpv-android-vvc/buildscripts/sdk/android-ndk-$v_ndk/build/cmake/android.toolchain.cmake \
+		-DBUILD_SHARED_LIBS=ON -DANDROID_PLATFORM=android-21 -DLIBXML2_WITH_ICONV=OFF \
+	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
 
-make -j$cores
-make DESTDIR="$prefix_dir" install
+cmake --build . --config release -j$cores
+cmake --build . --target install
