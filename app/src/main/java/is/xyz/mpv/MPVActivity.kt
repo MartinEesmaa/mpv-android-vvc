@@ -110,6 +110,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             }
         }
     }
+    private var becomingNoisyReceiverRegistered = false
 
     // Note that after Android 12 this is not necessarily called.
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { type ->
@@ -420,8 +421,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun isPlayingAudioOnly(): Boolean {
         if (player.aid == -1)
             return false
-        val fmt = MPVLib.getPropertyString("video-format")
-        return fmt.isNullOrEmpty() || arrayOf("mjpeg", "png", "bmp").indexOf(fmt) != -1
+        val image = MPVLib.getPropertyString("current-tracks/video/image")
+        return image.isNullOrEmpty() || image == "yes"
     }
 
     private fun shouldBackground(): Boolean {
@@ -1567,10 +1568,14 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         updatePiPParams()
         if (paused) {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            unregisterReceiver(becomingNoisyReceiver)
+            if (becomingNoisyReceiverRegistered)
+                unregisterReceiver(becomingNoisyReceiver)
+            becomingNoisyReceiverRegistered = false
         } else {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            registerReceiver(becomingNoisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+            if (!becomingNoisyReceiverRegistered)
+                registerReceiver(becomingNoisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+            becomingNoisyReceiverRegistered = true
         }
     }
 
@@ -1713,7 +1718,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "track-list" -> player.loadTracks()
-            "video-format" -> updateAudioUI()
+            "current-tracks/video/image" -> updateAudioUI()
             "hwdec-current" -> updateDecoderButton()
         }
         if (metaUpdated)
