@@ -38,6 +38,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
     protected static final String PERMISSION_PRE33 = Manifest.permission.WRITE_EXTERNAL_STORAGE;
     @RequiresApi(33)
     protected static final String[] PERMISSIONS_POST33 = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE;
             Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,

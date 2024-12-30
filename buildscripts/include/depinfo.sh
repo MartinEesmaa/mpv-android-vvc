@@ -20,9 +20,13 @@ v_mbedtls=3.6.2
 ## Dependency tree
 # I would've used a dict but putting arrays in a dict is not a thing
 
+#dep_libxml2=()
+dep_vvdec=()
+dep_fdkaac=()
+dep_opus=()
 dep_mbedtls=()
 dep_dav1d=()
-dep_ffmpeg=(mbedtls dav1d)
+dep_ffmpeg=(mbedtls dav1d vvdec fdkaac opus)
 dep_freetype2=()
 dep_fribidi=()
 dep_harfbuzz=()
