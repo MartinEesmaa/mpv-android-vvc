@@ -62,12 +62,14 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
         playerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             // we don't care about the result but remember that we've been here
             returningFromPlayer = true
-            Log.v(TAG, "returned from player")
+            Log.v(TAG, "returned from player ($it)")
         }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding = FragmentMainScreenBinding.bind(view)
+
+        Utils.handleInsetsAsPadding(binding.root)
 
         binding.docBtn.setOnClickListener {
             try {

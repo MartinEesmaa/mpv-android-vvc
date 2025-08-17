@@ -26,7 +26,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
 
         // hwdec
         val hwdec = if (sharedPreferences.getBoolean("hardware_decoding", true))
-            "auto"
+            HWDECS
         else
             "no"
 
@@ -190,7 +190,9 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
             Property("loop-playlist"),
             Property("loop-file"),
             Property("shuffle", MPV_FORMAT_FLAG),
-            Property("hwdec-current")
+            Property("hwdec-current"),
+            Property("mute", MPV_FORMAT_FLAG),
+            Property("aid")
         )
 
         for ((name, format) in p)
@@ -340,7 +342,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
     fun cyclePause() = MPVLib.command(arrayOf("cycle", "pause"))
     fun cycleAudio() = MPVLib.command(arrayOf("cycle", "audio"))
     fun cycleSub() = MPVLib.command(arrayOf("cycle", "sub"))
-    fun cycleHwdec() = MPVLib.command(arrayOf("cycle-values", "hwdec", "auto", "no"))
+    fun cycleHwdec() = MPVLib.command(arrayOf("cycle-values", "hwdec", HWDECS, "no"))
 
     fun cycleSpeed() {
         val speeds = arrayOf(0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0)
@@ -385,5 +387,8 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
 
     companion object {
         private const val TAG = "mpv"
+
+        // mpv option `hwdec` is set to this
+        private const val HWDECS = "mediacodec,mediacodec-copy"
     }
 }

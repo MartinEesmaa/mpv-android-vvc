@@ -32,8 +32,10 @@ import android.widget.Button
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.addCallback
+import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
 import androidx.annotation.LayoutRes
+import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -301,6 +303,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         BackgroundPlaybackService.mediaToken = mediaSession?.sessionToken
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioSessionId = audioManager!!.generateAudioSessionId()
+        MPVLib.setPropertyInt("audiotrack-session-id", audioSessionId)
 
         volumeControlStream = STREAM_TYPE
     }
@@ -366,8 +370,12 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
     }
 
+    private fun updateAudioPresence() {
+        isPlayingAudio = !(player.aid == -1 || MPVLib.getPropertyBoolean("mute"))
+    }
+
     private fun isPlayingAudioOnly(): Boolean {
-        if (player.aid == -1)
+        if (!isPlayingAudio)
             return false
         val image = MPVLib.getPropertyString("current-tracks/video/image")
         return image.isNullOrEmpty() || image == "yes"
@@ -510,6 +518,33 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         MPVLib.command(arrayOf("write-watch-later-config"))
     }
 
+    /**
+     * Requests or abandons audio focus and noisy receiver depending on the playback state.
+     * @warning Call from event thread, not UI thread
+     */
+    private fun handleAudioFocus() {
+        if ((psc.pause && !psc.cachePause) || !isPlayingAudio) {
+            if (becomingNoisyReceiverRegistered)
+                unregisterReceiver(becomingNoisyReceiver)
+            becomingNoisyReceiverRegistered = false
+            // TODO: could abandon audio focus after a timeout
+        } else {
+            if (!becomingNoisyReceiverRegistered)
+                registerReceiver(
+                    becomingNoisyReceiver,
+                    IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+                )
+            becomingNoisyReceiverRegistered = true
+            // (re-)request audio focus
+            // Note that this will actually request focus everytime the user unpauses, refer to discussion in #1066
+            if (requestAudioFocus()) {
+                onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN, "request")
+            } else {
+                onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS, "request")
+            }
+        }
+    }
+
     private fun requestAudioFocus(): Boolean {
         val req = audioFocusRequest ?:
             with(AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)) {
@@ -537,7 +572,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     // as well as actions equivalent to a focus change that we make up ourselves.
     private fun onAudioFocusChange(type: Int, source: String) {
         Log.v(TAG, "Audio focus changed: $type ($source)")
-        if (ignoreAudioFocus)
+        if (ignoreAudioFocus || isFinishing)
             return
         when (type) {
             AudioManager.AUDIOFOCUS_LOSS,
@@ -572,7 +607,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private var mightWantToToggleControls = false
 
+    /** true if we're actually outputting any audio (includes the mute state, but not pausing) */
+    private var isPlayingAudio = false
+
     private var useAudioUI = false
+
     private var lockedUI = false
 
     private fun pauseForDialog(): StateRestoreCallback {
@@ -927,12 +966,14 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         unlockUI()
         // For whatever stupid reason Android provides no good detection for when PiP is exited
-        // so we have to do this shit (https://stackoverflow.com/questions/43174507/#answer-56127742)
-        // FIXME: on Android 14 the activity just disappears into the void in this case
+        // so we have to do this shit <https://stackoverflow.com/questions/43174507/#answer-56127742>
+        // If we don't exit the activity here it will stick around and not be retrievable from the
+        // recents screen, or react to onNewIntent().
         if (activityIsStopped) {
-            // audio-only detection doesn't work in this situation, I don't care to fix this:
-            this.backgroundPlayMode = "never"
-            onPauseImpl() // behave as if the app normally went into background
+            // Note: On Android 12 or older there's another bug with this: the result will not
+            // be delivered to the calling activity and is instead instantly returned the next
+            // time, which makes it looks like the file picker is broken.
+            finishWithResult(RESULT_OK, true)
         }
     }
 
@@ -965,7 +1006,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun resolveUri(data: Uri): String? {
         val filepath = when (data.scheme) {
             "file" -> data.path
-            "content" -> openContentFd(data)
+            "content" -> translateContentUri(data)
             // mpv supports data URIs but needs data:// to pass it through correctly
             "data" -> "data://${data.schemeSpecificPart}"
             "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
@@ -978,25 +1019,24 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         return filepath
     }
 
-    private fun openContentFd(uri: Uri): String? {
+    private fun translateContentUri(uri: Uri): String {
         val resolver = applicationContext.contentResolver
         Log.v(TAG, "Resolving content URI: $uri")
-        val fd = try {
-            val desc = resolver.openFileDescriptor(uri, "r")
-            desc!!.detachFd()
+        try {
+            resolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                // See if we can skip the indirection and read the real file directly
+                val path = Utils.findRealPath(pfd.fd)
+                if (path != null) {
+                    Log.v(TAG, "Found real file path: $path")
+                    return path
+                }
+            }
         } catch(e: Exception) {
             Log.e(TAG, "Failed to open content fd: $e")
-            return null
         }
-        // See if we skip the indirection and read the real file directly
-        val path = Utils.findRealPath(fd)
-        if (path != null) {
-            Log.v(TAG, "Found real file path: $path")
-            ParcelFileDescriptor.adoptFd(fd).close() // we don't need that anymore
-            return path
-        }
-        // Else, pass the fd to mpv
-        return "fd://${fd}"
+
+        // Otherwise, just let mpv open the content URI directly via ffmpeg
+        return uri.toString()
     }
 
     private fun parseIntentExtras(extras: Bundle?) {
@@ -1245,7 +1285,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             // file picker may return a content URI or a bare file path
             val path = data!!.getStringExtra("path")!!
             val path2 = if (path.startsWith("content://"))
-                openContentFd(Uri.parse(path))
+                translateContentUri(Uri.parse(path))
             else
                 path
             MPVLib.command(arrayOf(cmd, path2, "cached"))
@@ -1574,26 +1614,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         } else {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-
-        // this should really be in eventProperty(String, Boolean) but it causes a cool
-        // JVM crash when I put it there...
-        if (paused) {
-            if (becomingNoisyReceiverRegistered)
-                unregisterReceiver(becomingNoisyReceiver)
-            becomingNoisyReceiverRegistered = false
-            // TODO: could abandon audio focus after a timeout
-        } else {
-            if (!becomingNoisyReceiverRegistered)
-                registerReceiver(becomingNoisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
-            becomingNoisyReceiverRegistered = true
-            // (re-)request audio focus
-            // Note that this will actually requests focus everytime the user unpauses, refer to discussion in #1066
-            if (requestAudioFocus()) {
-                onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN, "request")
-            } else {
-                onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS, "request")
-            }
-        }
     }
 
     private fun updateDecoderButton() {
@@ -1658,24 +1678,43 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
     }
 
+    @RequiresApi(26)
+    private fun makeRemoteAction(@DrawableRes icon: Int, @StringRes title: Int, intentAction: String): RemoteAction {
+        val intent = NotificationButtonReceiver.createIntent(this, intentAction)
+        return RemoteAction(Icon.createWithResource(this, icon), getString(title), "", intent)
+    }
+
+    /**
+     * Update Picture-in-picture parameters. Will only run if in PiP mode unless
+     * `force` is set.
+     */
     private fun updatePiPParams(force: Boolean = false) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
             return
         if (!isInPictureInPictureMode && !force)
             return
-        val intent1 = NotificationButtonReceiver.createIntent(this, "PLAY_PAUSE")
-        val action1 = if (psc.pause) {
-            RemoteAction(Icon.createWithResource(this, R.drawable.ic_play_arrow_black_24dp),
-                    "Play", "", intent1)
+
+        val playPauseAction = if (psc.pause)
+            makeRemoteAction(R.drawable.ic_play_arrow_black_24dp, R.string.btn_play, "PLAY_PAUSE")
+        else
+            makeRemoteAction(R.drawable.ic_pause_black_24dp, R.string.btn_pause, "PLAY_PAUSE")
+        val actions = mutableListOf<RemoteAction>()
+        if (psc.playlistCount > 1) {
+            actions.add(makeRemoteAction(
+                R.drawable.ic_skip_previous_black_24dp, R.string.dialog_prev, "ACTION_PREV"
+            ))
+            actions.add(playPauseAction)
+            actions.add(makeRemoteAction(
+                R.drawable.ic_skip_next_black_24dp, R.string.dialog_next, "ACTION_NEXT"
+            ))
         } else {
-            RemoteAction(Icon.createWithResource(this, R.drawable.ic_pause_black_24dp),
-                    "Pause", "", intent1)
+            actions.add(playPauseAction)
         }
 
         val params = with(PictureInPictureParams.Builder()) {
             val aspect = player.getVideoAspect() ?: 0.0
             setAspectRatio(Rational(aspect.times(10000).toInt(), 10000))
-            setActions(listOf(action1))
+            setActions(actions)
         }
         try {
             setPictureInPictureParams(params.build())
@@ -1735,7 +1774,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "track-list" -> player.loadTracks()
-            "current-tracks/video/image" -> updateAudioUI()
+            "aid", "current-tracks/video/image" -> updateAudioUI()
             "hwdec-current" -> updateDecoderButton()
         }
         if (metaUpdated)
@@ -1746,6 +1785,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "pause" -> updatePlaybackStatus(value)
+            "mute" -> { // indirectly from updateAudioPresence()
+                updateAudioUI()
+            }
         }
     }
 
@@ -1792,21 +1834,32 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 1 -> PlaybackStateCompat.REPEAT_MODE_ALL
                 else -> PlaybackStateCompat.REPEAT_MODE_NONE
             })
+        } else if (property == "aid") {
+            updateAudioPresence()
         }
+
+        if (property == "pause" || property == "aid")
+            handleAudioFocus()
 
         if (!activityIsForeground) return
         eventUiHandler.post { eventPropertyUi(property, null, metaUpdated) }
     }
 
     override fun eventProperty(property: String, value: Boolean) {
-        if (psc.update(property, value))
+        val metaUpdated = psc.update(property, value)
+        if (metaUpdated)
             updateMediaSession()
         if (property == "shuffle") {
             mediaSession?.setShuffleMode(if (value)
                 PlaybackStateCompat.SHUFFLE_MODE_ALL
             else
                 PlaybackStateCompat.SHUFFLE_MODE_NONE)
+        } else if (property == "mute") {
+            updateAudioPresence()
         }
+
+        if (metaUpdated || property == "mute")
+            handleAudioFocus()
 
         if (!activityIsForeground) return
         eventUiHandler.post { eventPropertyUi(property, value) }
@@ -1887,6 +1940,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                     else
                         getStreamMaxVolume(STREAM_TYPE)
                 }
+                if (!isPlayingAudio)
+                    maxVolume = 0 // disallow volume gesture if no audio
                 pausedForSeek = 0
 
                 fadeHandler.removeCallbacks(fadeRunnable3)

@@ -47,7 +47,9 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
 
     private fun buildNotification(): Notification {
         val notificationIntent = Intent(this, MPVActivity::class.java)
-        val pendingIntent = PendingIntentCompat.getActivity(this, 0, notificationIntent, 0, false)
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        val pendingIntent = PendingIntentCompat.getActivity(this, 0,
+            notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
 
@@ -87,7 +89,7 @@ class BackgroundPlaybackService : Service(), MPVLib.EventObserver {
             builder.addAction(buildNotificationAction(
                 R.drawable.ic_skip_next_black_24dp, R.string.dialog_next, "ACTION_NEXT"
             ))
-            style.setShowActionsInCompactView(0, 2)
+            style.setShowActionsInCompactView(0, 1, 2) // all
         } else {
             builder.addAction(playPauseAction)
         }
