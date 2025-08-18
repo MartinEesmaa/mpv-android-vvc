@@ -24,4 +24,5 @@ cmake \
 	    -DCMAKE_INSTALL_PREFIX=$prefix_dir $extra ..
 
 cmake --build . --config release -j$cores
+chmod +x ../lib/release-shared/libvvdec.so
 cmake --build . --target install
