@@ -9,6 +9,7 @@ import androidx.preference.PreferenceManager
 import com.google.android.material.color.DynamicColors
 import `is`.vvceasy.mpv.BuildConfig
 import `is`.vvceasy.mpv.MPVLib
+import `is`.vvceasy.mpv.MPVLib.MpvLogLevel
 import `is`.vvceasy.mpv.R
 import `is`.vvceasy.mpv.databinding.ActivityAboutBinding
 
@@ -59,7 +60,7 @@ class AboutActivity : AppCompatActivity(), MPVLib.LogObserver {
     override fun logMessage(prefix: String, level: Int, text: String) {
         if (prefix != "cplayer")
             return
-        if (level == MPVLib.mpvLogLevel.MPV_LOG_LEVEL_V)
+        if (level == MpvLogLevel.MPV_LOG_LEVEL_V)
             logs += text
 
         if (text.startsWith("List of enabled features:", true)) {

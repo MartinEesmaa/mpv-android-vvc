@@ -32,31 +32,38 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 internal object Utils {
+    private fun copyAssetFile(assetManager: AssetManager, filename: String, outFile: File): Boolean {
+        var ins: InputStream? = null
+        var out: OutputStream? = null
+        try {
+            ins = assetManager.open(filename, AssetManager.ACCESS_STREAMING)
+            // Note that .available() will return the full file size for asset streams, and it even works
+            // for compressed assets. Though none of this is documented...
+            val avail = ins.available().toLong()
+            if (outFile.length() == avail) {
+                Log.v(TAG, "Skipping copy of asset file (exists same size): $filename")
+                return true
+            }
+            out = FileOutputStream(outFile)
+            ins.copyTo(out)
+            Log.w(TAG, "Copied asset file ($avail bytes): $filename")
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to copy asset file: $filename", e)
+            return false
+        } finally {
+            out?.close()
+            ins?.close()
+        }
+        return true
+    }
+
     fun copyAssets(context: Context) {
         val assetManager = context.assets
         val files = arrayOf("subfont.ttf", "cacert.pem")
         val configDir = context.filesDir.path
-        for (filename in files) {
-            var ins: InputStream? = null
-            var out: OutputStream? = null
-            try {
-                ins = assetManager.open(filename, AssetManager.ACCESS_STREAMING)
-                val outFile = File("$configDir/$filename")
-                // Note that .available() officially returns an *estimated* number of bytes available
-                // this is only true for generic streams, asset streams return the full file size
-                if (outFile.length() == ins.available().toLong()) {
-                    Log.v(TAG, "Skipping copy of asset file (exists same size): $filename")
-                    continue
-                }
-                out = FileOutputStream(outFile)
-                ins.copyTo(out)
-                Log.w(TAG, "Copied asset file: $filename")
-            } catch (e: IOException) {
-                Log.e(TAG, "Failed to copy asset file: $filename", e)
-            } finally {
-                ins?.close()
-                out?.close()
-            }
+
+        for (name in files) {
+            copyAssetFile(assetManager, name, File("$configDir/$name"))
         }
     }
 
@@ -132,17 +139,24 @@ internal object Utils {
             candidates.add(path)
         }
 
+        val wrapGetStorageVolume = { it: File ->
+            try {
+                storageManager.getStorageVolume(it)
+            } catch (e: SecurityException) { null }
+        }
+
         for (path in candidates) {
             var root = File(path)
-            val vol = try {
-                storageManager.getStorageVolume(root)
-            } catch (e: SecurityException) { null } ?: continue
+            val vol = wrapGetStorageVolume(root) ?: continue
             if (vol.state != Environment.MEDIA_MOUNTED && vol.state != Environment.MEDIA_MOUNTED_READ_ONLY)
                 continue
 
             // find the actual root path of that volume
-            while (storageManager.getStorageVolume(root.parentFile) == vol) {
-                root = root.parentFile
+            while (true) {
+                val parent = root.parentFile
+                if (parent == null || wrapGetStorageVolume(parent) != vol)
+                    break
+                root = parent
             }
 
             if (!list.any { it.path == root })
@@ -167,7 +181,7 @@ internal object Utils {
             m[c.id] = c
         }
         group.removeAllViews()
-        // Readd children in specified order and unhide
+        // Re-add children in specified order and unhide
         for (id in idOrder) {
             val c = m.remove(id) ?: error("$group did not have child with id=$id")
             c.visibility = View.VISIBLE
@@ -499,7 +513,7 @@ internal object Utils {
 
     // cf. AndroidManifest.xml and MPVActivity.resolveUri()
     val PROTOCOLS = setOf(
-        "file", "content", "http", "https", "data",
+        "file", "content", "http", "https", "data", "ftp",
         "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
     )
 }

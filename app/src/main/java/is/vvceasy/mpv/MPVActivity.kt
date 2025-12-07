@@ -1,6 +1,7 @@
 package `is`.vvceasy.mpv
 
 import `is`.vvceasy.mpv.databinding.PlayerBinding
+import `is`.vvceasy.mpv.MPVLib.MpvEvent
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.annotation.SuppressLint
@@ -371,7 +372,13 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun updateAudioPresence() {
-        isPlayingAudio = !(player.aid == -1 || MPVLib.getPropertyBoolean("mute"))
+        val haveAudio = MPVLib.getPropertyBoolean("current-tracks/audio/selected")
+        if (haveAudio == null) {
+            // If we *don't know* if there's an active audio track then don't update to avoid
+            // spurious UI changes. The property will become available again later.
+            return
+        }
+        isPlayingAudio = (haveAudio && MPVLib.getPropertyBoolean("mute") != true)
     }
 
     private fun isPlayingAudioOnly(): Boolean {
@@ -536,7 +543,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 )
             becomingNoisyReceiverRegistered = true
             // (re-)request audio focus
-            // Note that this will actually request focus everytime the user unpauses, refer to discussion in #1066
+            // Note that this will actually request focus every time the user unpauses, refer to discussion in #1066
             if (requestAudioFocus()) {
                 onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN, "request")
             } else {
@@ -546,6 +553,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun requestAudioFocus(): Boolean {
+        val manager = audioManager ?: return false
         val req = audioFocusRequest ?:
             with(AudioFocusRequestCompat.Builder(AudioManagerCompat.AUDIOFOCUS_GAIN)) {
             setAudioAttributes(with(AudioAttributesCompat.Builder()) {
@@ -559,7 +567,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             }
             build()
         }
-        val res = AudioManagerCompat.requestAudioFocus(audioManager!!, req)
+        val res = AudioManagerCompat.requestAudioFocus(manager, req)
         if (res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             audioFocusRequest = req
             return true
@@ -625,7 +633,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             val oldValue = MPVLib.getPropertyString("keep-open")
             MPVLib.setPropertyBoolean("keep-open", true)
             return {
-                MPVLib.setPropertyString("keep-open", oldValue)
+                oldValue?.also { MPVLib.setPropertyString("keep-open", it) }
             }
         }
 
@@ -802,7 +810,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun interceptDpad(ev: KeyEvent): Boolean {
-        if (btnSelected == -1) { // UP and DOWN are always grabbed and overriden
+        if (btnSelected == -1) { // UP and DOWN are always grabbed and overridden
             when (ev.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (ev.action == KeyEvent.ACTION_DOWN) { // activate dpad navigation
@@ -816,7 +824,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return false
         }
 
-        // this runs when dpad nagivation is active:
+        // this runs when dpad navigation is active:
         when (ev.keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
                 if (ev.action == KeyEvent.ACTION_DOWN) { // deactivate dpad navigation
@@ -871,14 +879,14 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun interceptKeyDown(event: KeyEvent): Boolean {
         // intercept some keys to provide functionality "native" to
         // mpv-android even if libmpv already implements these
-        var unhandeled = 0
+        var unhandled = 0
 
         when (event.unicodeChar.toChar()) {
             // (overrides a default binding)
             'j' -> cycleSub()
             '#' -> cycleAudio()
 
-            else -> unhandeled++
+            else -> unhandled++
         }
         // Note: dpad center is bound according to how Android TV apps should generally behave,
         // see <https://developer.android.com/docs/quality-guidelines/tv-app-quality>.
@@ -896,10 +904,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             // (overrides a default binding)
             KeyEvent.KEYCODE_ENTER -> player.cyclePause()
 
-            else -> unhandeled++
+            else -> unhandled++
         }
 
-        return unhandeled < 2
+        return unhandled < 2
     }
 
     private fun onBackPressedImpl() {
@@ -1009,7 +1017,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             "content" -> translateContentUri(data)
             // mpv supports data URIs but needs data:// to pass it through correctly
             "data" -> "data://${data.schemeSpecificPart}"
-            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "lavf"
+            "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh",
+            "tcp", "udp", "lavf", "ftp"
             -> data.toString()
             else -> null
         }
@@ -1153,7 +1162,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             private fun openFilePicker(skip: Int) {
                 openFilePickerFor(RCODE_LOAD_FILE, "", skip) { result, data ->
                     if (result == RESULT_OK) {
-                        val path = data!!.getStringExtra("path")
+                        val path = data!!.getStringExtra("path")!!
                         MPVLib.command(arrayOf("loadfile", path, "append"))
                         impl.refresh()
                     }
@@ -1352,7 +1361,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 }
         )
 
-        if (player.aid == -1)
+        if (!isPlayingAudio)
             hiddenButtons.add(R.id.backgroundBtn)
         if ((MPVLib.getPropertyInt("chapter-list/count") ?: 0) == 0)
             hiddenButtons.add(R.id.rowChapter)
@@ -1617,8 +1626,6 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     private fun updateDecoderButton() {
-        if (!binding.cycleDecoderBtn.isVisible)
-            return
         binding.cycleDecoderBtn.text = when (player.hwdecActive) {
             "mediacodec" -> "HW+"
             "no" -> "SW"
@@ -1774,7 +1781,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         if (!activityIsForeground) return
         when (property) {
             "track-list" -> player.loadTracks()
-            "aid", "current-tracks/video/image" -> updateAudioUI()
+            "current-tracks/audio/selected", "current-tracks/video/image" -> updateAudioUI()
             "hwdec-current" -> updateDecoderButton()
         }
         if (metaUpdated)
@@ -1834,11 +1841,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 1 -> PlaybackStateCompat.REPEAT_MODE_ALL
                 else -> PlaybackStateCompat.REPEAT_MODE_NONE
             })
-        } else if (property == "aid") {
+        } else if (property == "current-tracks/audio/selected") {
             updateAudioPresence()
         }
 
-        if (property == "pause" || property == "aid")
+        if (property == "pause" || property == "current-tracks/audio/selected")
             handleAudioFocus()
 
         if (!activityIsForeground) return
@@ -1891,10 +1898,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun event(eventId: Int) {
-        if (eventId == MPVLib.mpvEventId.MPV_EVENT_SHUTDOWN)
+        if (eventId == MpvEvent.MPV_EVENT_SHUTDOWN)
             finishWithResult(if (playbackHasStarted) RESULT_OK else RESULT_CANCELED)
 
-        if (eventId == MPVLib.mpvEventId.MPV_EVENT_START_FILE) {
+        if (eventId == MpvEvent.MPV_EVENT_START_FILE) {
             for (c in onloadCommands)
                 MPVLib.command(c)
             if (this.statsLuaMode > 0 && !playbackHasStarted) {
