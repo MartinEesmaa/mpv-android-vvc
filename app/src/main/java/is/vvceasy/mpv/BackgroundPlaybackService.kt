@@ -18,7 +18,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.app.ServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
-import `is`.xyz.mpv.MPVLib.MpvEvent
+import `is`.vvceasy.mpv.MPVLib.MpvEvent
 
 /*
     All this service does is
