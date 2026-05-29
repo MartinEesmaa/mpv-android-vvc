@@ -7,11 +7,6 @@
 
 mkdir -p deps && cd deps
 
-# libxml2
-# if [ ! -d libxml2 ]; then
-# 	git clone https://github.com/GNOME/libxml2 libxml2
-# fi
-
 # vvdec
 if [ ! -d vvdec ]; then
 	git clone https://github.com/fraunhoferhhi/vvdec vvdec
@@ -39,8 +34,9 @@ fi
 
 # ffmpeg
 if [ ! -d ffmpeg ]; then
-	git clone https://github.com/MartinEesmaa/FFmpeg-VVC ffmpeg
-	[ $IN_CI -eq 1 ] && git -C ffmpeg checkout $v_ci_ffmpeg
+	args=()
+	[ $IN_CI -eq 1 ] && args+=(--depth=1 -b "$v_ci_ffmpeg")
+	git clone https://github.com/MartinEesmaa/FFmpeg-Plus ffmpeg "${args[@]}"
 fi
 
 # freetype2
@@ -65,6 +61,20 @@ if [ ! -d unibreak ]; then
 	mkdir unibreak
 	$WGET https://github.com/adah1972/libunibreak/releases/download/libunibreak_${v_unibreak//./_}/libunibreak-${v_unibreak}.tar.gz -O - | \
 		tar -xz -C unibreak --strip-components=1
+fi
+
+# libxml2
+if [ ! -d libxml2 ]; then
+	mkdir libxml2
+	$WGET https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${v_libxml2}/libxml2-v${v_libxml2}.tar.gz -O - | \
+		tar -xz -C libxml2 --strip-components=1
+fi
+
+# fontconfig
+if [ ! -d fontconfig ]; then
+	mkdir fontconfig
+	$WGET https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${v_fontconfig}/fontconfig-${v_fontconfig}.tar.gz -O - | \
+		tar -xz -C fontconfig --strip-components=1
 fi
 
 # libass

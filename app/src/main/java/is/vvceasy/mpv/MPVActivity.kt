@@ -5,6 +5,7 @@ import `is`.vvceasy.mpv.MPVLib.MpvEvent
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.annotation.SuppressLint
+import android.app.ForegroundServiceStartNotAllowedException
 import androidx.appcompat.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -39,6 +40,7 @@ import androidx.annotation.LayoutRes
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.IntentCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -178,6 +180,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private var ignoreAudioFocus = false
     private var playlistExitWarning = true
+    private var newIntentReplace = false
 
     private var smoothSeekGesture = false
     /* * */
@@ -216,16 +219,17 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             if (lockedUI) false else gestures.onTouchEvent(e)
         }
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.outside) { _, windowInsets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.outside) { v, windowInsets ->
             // guidance: https://medium.com/androiddevelopers/gesture-navigation-handling-visual-overlaps-4aed565c134c
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val insets2 = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout())
-            binding.outside.updateLayoutParams<MarginLayoutParams> {
+            val insets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            v.updateLayoutParams<MarginLayoutParams> {
                 // avoid system bars and cutout
-                leftMargin = Math.max(insets.left, insets2.left)
-                topMargin = Math.max(insets.top, insets2.top)
-                bottomMargin = Math.max(insets.bottom, insets2.bottom)
-                rightMargin = Math.max(insets.right, insets2.right)
+                leftMargin = insets.left
+                topMargin = insets.top
+                bottomMargin = insets.bottom
+                rightMargin = insets.right
             }
             WindowInsetsCompat.CONSUMED
         }
@@ -305,7 +309,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val audioSessionId = audioManager!!.generateAudioSessionId()
-        MPVLib.setPropertyInt("audiotrack-session-id", audioSessionId)
+        if (audioSessionId != AudioManager.ERROR)
+            player.setAudioSessionId(audioSessionId)
+        else
+            Log.w(TAG, "AudioManager.generateAudioSessionId() returned error")
 
         volumeControlStream = STREAM_TYPE
     }
@@ -330,6 +337,11 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         // Suppress any further callbacks
         activityIsForeground = false
+
+        if (becomingNoisyReceiverRegistered) {
+            unregisterReceiver(becomingNoisyReceiver)
+            becomingNoisyReceiverRegistered = false
+        }
 
         BackgroundPlaybackService.mediaToken = null
         mediaSession?.let {
@@ -363,8 +375,13 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         if (!activityIsForeground && didResumeBackgroundPlayback) {
-            MPVLib.command(arrayOf("loadfile", filepath, "append"))
-            showToast(getString(R.string.notice_file_appended))
+            if (this.newIntentReplace) {
+                MPVLib.command(arrayOf("loadfile", filepath, "replace"))
+                showToast(getString(R.string.notice_file_play))
+            } else {
+                MPVLib.command(arrayOf("loadfile", filepath, "append"))
+                showToast(getString(R.string.notice_file_appended))
+            }
             moveTaskToBack(true)
         } else {
             MPVLib.command(arrayOf("loadfile", filepath))
@@ -410,6 +427,20 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         onPauseImpl()
     }
 
+    private fun tryStartForegroundService(intent: Intent): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                ContextCompat.startForegroundService(this, intent)
+            } catch (e: ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, e)
+                return false
+            }
+        } else {
+            ContextCompat.startForegroundService(this, intent)
+        }
+        return true
+    }
+
     private fun onPauseImpl() {
         val fmt = MPVLib.getPropertyString("video-format")
         val shouldBackground = shouldBackground()
@@ -438,7 +469,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             Log.v(TAG, "Resuming playback in background")
             stopServiceHandler.removeCallbacks(stopServiceRunnable)
             val serviceIntent = Intent(this, BackgroundPlaybackService::class.java)
-            ContextCompat.startForegroundService(this, serviceIntent)
+            if (!tryStartForegroundService(serviceIntent)) {
+                didResumeBackgroundPlayback = false
+                player.paused = true
+            }
         }
     }
 
@@ -467,6 +501,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         this.useTimeRemaining = prefs.getBoolean("use_time_remaining", false)
         this.ignoreAudioFocus = prefs.getBoolean("ignore_audio_focus", false)
         this.playlistExitWarning = prefs.getBoolean("playlist_exit_warning", true)
+        this.newIntentReplace = prefs.getBoolean("new_intent_replace", false)
         this.smoothSeekGesture = prefs.getBoolean("seek_gesture_smooth", false)
     }
 
@@ -1000,15 +1035,54 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     // Intent/Uri parsing
 
     private fun parsePathFromIntent(intent: Intent): String? {
-        val filepath = when (intent.action) {
-            Intent.ACTION_VIEW -> intent.data?.let { resolveUri(it) }
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
-                val uri = Uri.parse(it.trim())
-                if (uri.isHierarchical && !uri.isRelative) resolveUri(uri) else null
-            }
-            else -> intent.getStringExtra("filepath")
+        fun safeResolveUri(u: Uri?): String? {
+            return if (u != null && u.isHierarchical && !u.isRelative)
+                resolveUri(u)
+            else null
         }
-        return filepath
+
+        return when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                // Normal file open or URL view
+                intent.data?.let { resolveUri(it) }
+            }
+
+            Intent.ACTION_SEND -> {
+                // Handle single shared file or text link
+                var parsed = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                if (parsed == null) {
+                    parsed = intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
+                        Uri.parse(it.trim())
+                    }
+                }
+
+                safeResolveUri(parsed)
+            }
+
+            Intent.ACTION_SEND_MULTIPLE -> {
+                // Multiple shared files
+                val uris = IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                if (!uris.isNullOrEmpty()) {
+                    val paths = uris.mapNotNull { uri ->
+                        safeResolveUri(uri)
+                    }
+                    if (paths.size == 1) {
+                        return paths[0]
+                    } else if (!paths.isEmpty()) {
+                        // Use a memory playlist
+                        val memoryUri = "memory://#EXTM3U\n${paths.joinToString("\n")}\n"
+                        Log.v(TAG, "Created memory playlist URI (${paths.size})")
+                        return memoryUri
+                    }
+                }
+                return null
+            }
+
+            else -> {
+                // Custom intent from MainScreenFragment
+                intent.getStringExtra("filepath")
+            }
+        }
     }
 
     private fun resolveUri(data: Uri): String? {
@@ -1058,6 +1132,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         }
 
         // Refer to http://mpv-android.github.io/mpv-android/intent.html
+        // Note: these only apply to the first file, it's not clear what the semantics for a
+        // playlist should be.
+
         if (extras.getByte("decode_mode") == 2.toByte())
             pushOption("hwdec", "no")
         if (extras.containsKey("subs")) {
@@ -1276,6 +1353,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             restoreState()
             return
         }
+
+        Utils.handleInsetsAsPadding(dialogView)
 
         with (builder) {
             setView(dialogView)
@@ -1898,11 +1977,18 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun event(eventId: Int) {
+        if (eventId == MpvEvent.MPV_EVENT_END_FILE) {
+            psc.eof()
+            updateMediaSession()
+        }
+
         if (eventId == MpvEvent.MPV_EVENT_SHUTDOWN)
             finishWithResult(if (playbackHasStarted) RESULT_OK else RESULT_CANCELED)
 
         if (eventId == MpvEvent.MPV_EVENT_START_FILE) {
-            for (c in onloadCommands)
+            val cmds = onloadCommands.toTypedArray()
+            onloadCommands.clear()
+            for (c in cmds)
                 MPVLib.command(c)
             if (this.statsLuaMode > 0 && !playbackHasStarted) {
                 MPVLib.command(arrayOf("script-binding", "stats/display-page-${this.statsLuaMode}-toggle"))

@@ -99,6 +99,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         MPVLib.setOptionString("hwdec", hwdec)
         MPVLib.setOptionString("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
+        MPVLib.setOptionString("audio-set-media-role", "yes")
         MPVLib.setOptionString("tls-verify", "yes")
         MPVLib.setOptionString("tls-ca-file", "${this.context.filesDir.path}/cacert.pem")
         MPVLib.setOptionString("input-default-bindings", "yes")
@@ -110,8 +111,6 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         val screenshotDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
         screenshotDir.mkdirs()
         MPVLib.setOptionString("screenshot-directory", screenshotDir.path)
-        // workaround for <https://github.com/mpv-player/mpv/issues/14651>
-        MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
     }
 
     override fun postInitOptions() {
@@ -320,6 +319,11 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
             else
                 it
         }
+    }
+
+    fun setAudioSessionId(id: Int) {
+        MPVLib.setPropertyInt("audiotrack-session-id", id)
+        MPVLib.setPropertyInt("aaudio-session-id", id)
     }
 
     class TrackDelegate(private val name: String) {

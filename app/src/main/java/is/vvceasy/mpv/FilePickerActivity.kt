@@ -46,6 +46,7 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
 
         setContentView(R.layout.activity_filepicker)
         supportActionBar?.title = ""
+        supportActionBar?.hide()
 
         onBackPressedDispatcher.addCallback(this) {
             onBackPressedImpl()
@@ -199,6 +200,7 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
                 commit()
             }
         }
+        supportActionBar?.show()
 
         if (!FilePickerFragment.hasPermission(this, File("/"))) {
             Log.v(TAG, "FilePickerActivity: waiting for file picker permission")
@@ -222,13 +224,18 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             // check that the preferred path is inside a storage volume
             val vols = Utils.getStorageVolumes(this)
-            val vol = vols.find { defaultPath.startsWith(it.path) }
+            var vol = vols.find { defaultPath.startsWith(it.path) }
             if (vol == null) {
                 // looks like it wasn't
                 Log.w(TAG, "default path set to \"$defaultPath\" but no such storage volume")
-                with (fragment!!) {
-                    root = vols.first().path
-                    goToDir(vols.first().path)
+                vol = vols.firstOrNull()
+                if (vol == null) {
+                    Log.e(TAG, "can't find any volumes at all!")
+                } else {
+                    with(fragment!!) {
+                        root = vol.path
+                        goToDir(vol.path)
+                    }
                 }
             } else {
                 with (fragment!!) {
@@ -273,6 +280,7 @@ class FilePickerActivity : AppCompatActivity(), AbstractFilePickerFragment.OnFil
         Log.v(TAG, "FilePickerActivity: showing document picker at \"$root\"")
         assert(fragment2 == null)
         fragment2 = MPVDocumentPickerFragment(root)
+        supportActionBar?.show()
 
         val defaultPathStr = intent.getStringExtra("default_path")
         if (!defaultPathStr.isNullOrEmpty()) {

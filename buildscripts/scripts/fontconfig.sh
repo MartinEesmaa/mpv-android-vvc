@@ -16,8 +16,8 @@ fi
 unset CC CXX # meson wants these unset
 
 meson setup $build --cross-file "$prefix_dir"/crossfile.txt \
-	-Dtests=disabled -Ddocs=disabled \
-	-D{raster,vector,gpu,subset}=disabled
+	-D{tests,doc,tools,nls}=disabled \
+	-Dxml-backend=libxml2
 
 ninja -C $build -j$cores
 DESTDIR="$prefix_dir" ninja -C $build install
