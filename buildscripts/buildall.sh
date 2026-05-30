@@ -76,6 +76,7 @@ loadarch () {
 	export LDFLAGS="-Wl,-O1,--icf=safe -Wl,-z,max-page-size=16384"
 	export AR=llvm-ar
 	export RANLIB=llvm-ranlib
+	export NDK_HOME="$PWD/sdk/android-ndk-$v_ndk"
 
 	# set up correct paths for pkg-config
 	if ! command -v pkg-config >/dev/null; then
