@@ -3,7 +3,7 @@
 BUILD="./buildscripts"
 
 . $BUILD/include/path.sh
-. $BUILD/include/depinfo.sh # for $v_sdk_build_tools
+. $BUILD/include/depinfo.sh
 
 if [ "$1" == "build" ]; then
 	true
@@ -39,18 +39,29 @@ PREFIX32="$prefix32" PREFIX64="$prefix64" PREFIX_X64="$prefix_x64" PREFIX_X86="$
 ndk-build -C app/src/main -j$cores
 
 ### Java parts
-targets=(assembleDebug)
-if [ -z "$DONT_BUILD_RELEASE" ]; then
-	targets+=(assembleRelease)
-	[ -n "$BUNDLE" ] && targets+=(bundleRelease)
+# Android's gradle plugin needs both of these to correctly strip libraries.
+# We could pass them directly to Gradle but by using this file it will persist
+# inside Android Studio too.
+printf '%s\n' \
+	"# This file is automatically written by the build scripts, and read using Gradle" \
+	"ndkVersion=$v_ndk_n" "ndkRoot=$ANDROID_NDK_ROOT" >ndk.properties
+
+
+if [ -n "$DONT_BUILD_RELEASE" ]; then
+	./gradlew assembleDebug
+else
+	./gradlew assembleDebug assembleRelease
+	if [ -n "$BUNDLE" ]; then
+		# needs to be a separate invocation due to AGP bugs...
+		./gradlew bundleRelease
+	fi
 fi
-./gradlew "${targets[@]}"
 
 ### Signing
 if [ -n "$ANDROID_SIGNING_KEY" ]; then
 	cd "app/build/outputs/apk"
 	apksigner=${ANDROID_HOME}/build-tools/${v_sdk_build_tools}/apksigner
-	for v in default api29; do
+	for v in default allstorage; do
 		pushd $v
 		# sign only the universal debug APK
 		"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" \

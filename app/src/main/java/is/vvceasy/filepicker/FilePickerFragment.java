@@ -10,9 +10,13 @@ import is.vvceasy.mpv.R;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.FileObserver;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -43,6 +47,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
     };
+    protected static boolean USE_ALL_FILE_ACCESS = false;
     protected boolean showHiddenItems = false;
     protected FileFilter filterPredicate = null;
     private File mRequestedPath = null;
@@ -92,6 +97,9 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
      * @return true if app has been granted permission to write to the SD-card.
      */
     public static boolean hasPermission(@NonNull Context context, @NonNull File path) {
+        if (USE_ALL_FILE_ACCESS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // user can choose to grant at least one
             for (String permission : PERMISSIONS_POST33) {
@@ -118,10 +126,28 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
     @Override
     protected void handlePermission(@NonNull File path) {
         mRequestedPath = path;
+        if (USE_ALL_FILE_ACCESS && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:" + requireContext().getPackageName()));
+            startActivityForResult(intent, PERMISSIONS_REQUEST_ID);
+            return;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(PERMISSIONS_POST33, PERMISSIONS_REQUEST_ID);
         } else {
             requestPermissions(new String[]{PERMISSION_PRE33}, PERMISSIONS_REQUEST_ID);
+        }
+    }
+
+    @Override
+    @RequiresApi(30)
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == PERMISSIONS_REQUEST_ID) {
+            String[] perms = { "" }; // dummy
+            int[] results = { PackageManager.PERMISSION_DENIED };
+            if (Environment.isExternalStorageManager())
+                results[0] = PackageManager.PERMISSION_GRANTED;
+            onRequestPermissionsResult(PERMISSIONS_REQUEST_ID, perms, results);
         }
     }
 
@@ -157,6 +183,8 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             // Do refresh
             if (mRequestedPath != null)
                 refresh(mRequestedPath);
+            if (mListener != null)
+                mListener.onPermissionGranted();
         } else {
             Toast.makeText(getContext(), R.string.nnf_permission_external_write_denied,
                     Toast.LENGTH_SHORT).show();
@@ -254,7 +282,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
             public List<File> loadInBackground() {
                 File[] listFiles = mCurrentPath.listFiles();
                 if (listFiles == null) {
-                    Log.e(TAG, "FilePickerFragment: IO error while listing files");
+                    Log.e(TAG, "FilePickerFragment: IO error while listing files in " + mCurrentPath.toString());
                     return new ArrayList<>(0);
                 }
 

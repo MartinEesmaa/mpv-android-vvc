@@ -26,14 +26,13 @@ markbuilt () {
 }
 
 loadndk () {
-	unset ANDROID_NDK_ROOT
-
 	local ndk="$PWD/sdk/android-ndk-${v_ndk}"
 	local toolchain=$(echo "$ndk/toolchains/llvm/prebuilt/"*)
 	if [ ! -d "$toolchain" ]; then
 		echo "Can't find toolchain inside NDK" >&2
 		return 1
 	fi
+	export ANDROID_NDK_ROOT="$ndk"
 	export PATH="$toolchain/bin:$ndk:$PWD/sdk/bin:$PATH"
 }
 
@@ -42,7 +41,7 @@ loadarch () {
 	unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 	unset PKG_CONFIG_PATH
 
-	local apilvl=21
+	local apilvl=23
 	# ndk_triple: the target triple
 	local cc_triple # how the compilers are actually prefixed
 	if [[ "$1" == "armv7l" ]]; then
@@ -211,7 +210,7 @@ fi
 
 # be helpful and list the output APKs (if they exist)
 if wasbuilt "mpv-android"; then
-	ls -lh ../app/build/outputs/apk/{default,api29}/*/*.apk || :
+	ls -lh ../app/build/outputs/apk/{default,allstorage}/*/*.apk || :
 fi
 
 exit 0

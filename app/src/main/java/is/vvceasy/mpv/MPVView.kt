@@ -142,7 +142,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         if (KeyEvent.isModifierKey(event.keyCode))
             return false
 
-        var mapped = KeyMapping.map.get(event.keyCode)
+        var mapped = keyMapping[event.keyCode]
         if (mapped == null) {
             // Fallback to produced glyph
             if (!event.isPrintingKey) {

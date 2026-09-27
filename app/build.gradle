@@ -5,16 +5,24 @@ ext.universalBase = 8000
 
 android {
     namespace 'is.vvceasy.mpv'
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdk 35
+        minSdkVersion 23
+        targetSdk 36
 
-        versionCode 46
-        versionName "2026-04-25-release"
+        versionCode 48
+        versionName "2026-09-17-release"
 
         vectorDrawables.useSupportLibrary = true
+
+        // Load information about the NDK to use
+        def props = new Properties()
+        def propfile = new File(rootDir, 'ndk.properties')
+        if (propfile.exists())
+            props.load(new FileInputStream(propfile))
+        ndkVersion = props.getProperty('ndkVersion', '')
+        ndkPath = props.getProperty('ndkRoot', '')
     }
 
     flavorDimensions "default"
@@ -22,9 +30,9 @@ android {
         "default" {
             isDefault true
         }
-        api29 {
-            targetSdkVersion 29
-            versionNameSuffix "-oldapi"
+        allstorage {
+            versionNameSuffix "-allstorage"
+            minSdkVersion 30
         }
     }
 
@@ -33,9 +41,19 @@ android {
         buildConfig = true
     }
 
+    buildTypes {
+        release {
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
     splits {
         abi {
-            enable true
+            // workaround: AGP fails to build split APKs and a bundle at the same time
+            enable !gradle.startParameter.taskNames.any { it.startsWith("bundle") }
+
             reset()
             // include only the ABIs that were actually built
             project.ext.abiCodes.each { abi, _ ->
@@ -68,7 +86,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'androidx.media:media:1.7.1'
+    implementation 'androidx.media:media:1.8.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'com.google.android.material:material:1.14.0'
 }
