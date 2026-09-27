@@ -1,6 +1,6 @@
 -dontobfuscate
 
 # for JNI interfacing
--keep class is.xyz.mpv.MPVLib {
+-keep class is.vvceasy.mpv.MPVLib {
 	*;
 }
